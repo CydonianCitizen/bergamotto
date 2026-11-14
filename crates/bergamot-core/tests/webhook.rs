@@ -3,21 +3,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use bergamot_core::executors::webhook::{SecretProvider, WebhookExecutor};
-use bergamot_core::{CancellationToken, ExecutionError, ExecutorConfig};
+use bergamot_core::executors::webhook::WebhookExecutor;
+use bergamot_core::{
+    CancellationToken, ExecutionError, ExecutorConfig, MemorySecretStore, SecretStore,
+};
 use tempfile::tempdir;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
-
-struct TestSecret;
-
-impl SecretProvider for TestSecret {
-    fn get_secret(&self, key: &str) -> Result<String, ExecutionError> {
-        assert_eq!(key, "test-credential");
-        Ok("local-test-token".to_owned())
-    }
-}
 
 #[tokio::test]
 async fn webhook_posts_multiple_files_with_bearer_credentials() {
@@ -111,11 +104,12 @@ async fn webhook_times_out_while_reading_a_response() {
 }
 
 fn test_executor() -> WebhookExecutor {
-    WebhookExecutor::with_client_builder(
-        Arc::new(TestSecret),
-        reqwest::Client::builder().no_proxy(),
-    )
-    .unwrap()
+    let store = MemorySecretStore::default();
+    store
+        .set_secret("test-credential", "local-test-token")
+        .unwrap();
+    WebhookExecutor::with_client_builder(Arc::new(store), reqwest::Client::builder().no_proxy())
+        .unwrap()
 }
 
 fn config(url: String, headers: BTreeMap<String, String>, timeout_seconds: u32) -> ExecutorConfig {

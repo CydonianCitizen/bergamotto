@@ -24,28 +24,13 @@ pub trait SecretProvider: Send + Sync {
     fn get_secret(&self, key: &str) -> Result<String, ExecutionError>;
 }
 
-/// Reads credentials stored under the `bergamot` service in the OS credential store.
-#[derive(Debug, Default)]
-pub struct KeyringSecretProvider;
+pub use crate::secrets::KeyringSecretStore as KeyringSecretProvider;
 
-impl SecretProvider for KeyringSecretProvider {
+impl<T: crate::SecretStore> SecretProvider for T {
     fn get_secret(&self, key: &str) -> Result<String, ExecutionError> {
-        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
-        {
-            let entry = keyring::Entry::new("bergamot", key).map_err(|_| {
-                ExecutionError::Secret("could not access OS credential store".into())
-            })?;
-            entry
-                .get_password()
-                .map_err(|_| ExecutionError::Secret("credential was not available".into()))
-        }
-        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-        {
-            let _ = key;
-            Err(ExecutionError::Secret(
-                "no OS credential store for this platform".into(),
-            ))
-        }
+        crate::SecretStore::get_secret(self, key)
+            .map_err(|error| ExecutionError::Secret(error.to_string()))?
+            .ok_or_else(|| ExecutionError::Secret("credential has not been configured".into()))
     }
 }
 
@@ -221,8 +206,7 @@ impl WebhookExecutor {
         let key = key.to_owned();
         let secret = tokio::task::spawn_blocking(move || provider.get_secret(&key))
             .await
-            .map_err(|_| ExecutionError::Secret("credential lookup failed".into()))?
-            .map_err(|_| ExecutionError::Secret("credential lookup failed".into()))?;
+            .map_err(|_| ExecutionError::Secret("credential lookup failed".into()))??;
         if secret.is_empty() {
             return Err(ExecutionError::Secret("credential was empty".into()));
         }

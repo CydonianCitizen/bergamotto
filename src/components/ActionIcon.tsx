@@ -1,8 +1,8 @@
-import { Braces, FileCode2, FileImage, Film, Globe, Image, ScanLine, Terminal, UploadCloud, Zap } from 'lucide-react';
+import { Archive, Braces, FileCode2, FileImage, Film, Globe, Image, Music2, ScanLine, Terminal, UploadCloud, Zap } from 'lucide-react';
 import type { ExecutorConfig } from '../types/actions';
 
 const icons = new Map(Object.entries({
-  braces: Braces, code: FileCode2, film: Film, image: Image, 'file-image': FileImage,
+  archive: Archive, braces: Braces, code: FileCode2, film: Film, image: Image, 'file-image': FileImage, music: Music2,
   globe: Globe, scan: ScanLine, terminal: Terminal, 'upload-cloud': UploadCloud, zap: Zap,
 }));
 const fallback = { process: Terminal, script: Braces, webhook: Globe };

@@ -5,6 +5,8 @@ pub mod dispatcher;
 pub mod executors;
 pub mod matcher;
 pub mod registry;
+pub mod secrets;
+pub mod settings;
 pub mod staging;
 
 pub use descriptor::{
@@ -13,5 +15,7 @@ pub use descriptor::{
 };
 pub use dispatcher::Dispatcher;
 pub use executors::ExecutionError;
-pub use registry::{ActionRegistry, RegistryError};
+pub use registry::{ActionRegistry, PackCollision, PackPreview, RegistryError};
+pub use secrets::{KeyringSecretStore, MemorySecretStore, SecretError, SecretStore};
+pub use settings::{AppSettings, ModifierKey, SettingsStore};
 pub use tokio_util::sync::CancellationToken;

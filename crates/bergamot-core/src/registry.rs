@@ -12,6 +12,9 @@ use tempfile::NamedTempFile;
 
 use crate::descriptor::{ActionDescriptor, DragContext};
 
+mod packs;
+pub use packs::{PackCollision, PackPreview};
+
 const ACTION_SCHEMA: &str = include_str!("../../../shared/schemas/action.schema.json");
 const STARTER_PACK: &[(&str, &[u8])] = &[
     (
@@ -19,12 +22,20 @@ const STARTER_PACK: &[(&str, &[u8])] = &[
         include_bytes!("../../../shared/starter-pack/ffmpeg-compress.json"),
     ),
     (
-        "imagemagick-convert.json",
-        include_bytes!("../../../shared/starter-pack/imagemagick-convert.json"),
+        "ffmpeg-extract-audio.json",
+        include_bytes!("../../../shared/starter-pack/ffmpeg-extract-audio.json"),
     ),
     (
-        "python-script.json",
-        include_bytes!("../../../shared/starter-pack/python-script.json"),
+        "imagemagick-webp.json",
+        include_bytes!("../../../shared/starter-pack/imagemagick-webp.json"),
+    ),
+    (
+        "sha256-checksum.json",
+        include_bytes!("../../../shared/starter-pack/sha256-checksum.json"),
+    ),
+    (
+        "zip-files.json",
+        include_bytes!("../../../shared/starter-pack/zip-files.json"),
     ),
     (
         "webhook-upload.json",
@@ -56,6 +67,8 @@ pub enum RegistryError {
     Watcher(String),
     #[error("registry lock was poisoned")]
     LockPoisoned,
+    #[error("action pack could not be rolled back after {original}: {rollback}")]
+    PackRollback { original: String, rollback: String },
 }
 
 #[derive(Default)]

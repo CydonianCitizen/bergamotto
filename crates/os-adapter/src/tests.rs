@@ -1,7 +1,24 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use super::{DragPoll, DragSessionEvent, DragStateMachine};
+use super::{DragPoll, DragSessionEvent, DragStateMachine, ModifierKey, MonitorControl};
+
+#[test]
+fn changing_modifier_or_enabled_state_invalidates_events_from_previous_configuration() {
+    let control = MonitorControl::default();
+    assert!(control.enabled());
+    assert!(control.accepts(1));
+    assert!(!control.configure(true, ModifierKey::Shift));
+    assert!(control.configure(true, ModifierKey::Ctrl));
+    assert!(!control.accepts(1));
+    let ctrl = control.0.load(std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(ModifierKey::from_generation(ctrl), ModifierKey::Ctrl);
+    assert!(control.configure(false, ModifierKey::Alt));
+    assert!(!control.enabled());
+    assert!(!control.accepts(ctrl));
+    let alt = control.0.load(std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(ModifierKey::from_generation(alt), ModifierKey::Alt);
+}
 
 #[test]
 fn requires_button_modifier_and_inclusive_euclidean_distance() {
@@ -10,11 +27,11 @@ fn requires_button_modifier_and_inclusive_euclidean_distance() {
     let mut poll = DragPoll::new(now, false, true, 0.0, 0.0);
     assert_eq!(state.update(poll, || panic!("idle")), None);
     poll.button_down = true;
-    poll.shift_down = false;
+    poll.modifier_down = false;
     assert_eq!(state.update(poll, || panic!("unmodified press")), None);
     poll.cursor_x = -9.6;
     poll.cursor_y = 12.7;
-    poll.shift_down = true;
+    poll.modifier_down = true;
     assert_eq!(state.update(poll, || panic!("below threshold")), None);
     poll.cursor_y = 12.8;
     let files = vec![PathBuf::from("sample file.txt")];
@@ -55,7 +72,7 @@ fn hold_threshold_waits_for_a_drag_source_then_allows_unknown_files() {
             cursor_y: 22.0,
         })
     );
-    poll.shift_down = false;
+    poll.modifier_down = false;
     poll.button_down = false;
     assert_eq!(
         state.update(poll, || panic!("released")),
@@ -75,12 +92,12 @@ fn modifier_release_cancels_once_and_requires_a_fresh_press() {
         state.update(poll, || Some(vec![])),
         Some(DragSessionEvent::DragStarted { .. })
     ));
-    poll.shift_down = false;
+    poll.modifier_down = false;
     assert_eq!(
         state.update(poll, || panic!("cancelled")),
         Some(DragSessionEvent::DragModifierReleased)
     );
-    poll.shift_down = true;
+    poll.modifier_down = true;
     poll.cursor_x = 100.0;
     assert_eq!(state.update(poll, || panic!("same press")), None);
     poll.button_down = false;

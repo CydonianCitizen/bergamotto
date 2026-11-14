@@ -1,5 +1,6 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
+use bergamot_core::{AppSettings, ModifierKey, SettingsStore};
 use os_adapter::{DragSessionEvent, MonitorControl};
 use tauri::menu::MenuItem;
 use tauri::{AppHandle, DragDropEvent, Emitter, Manager, State, WindowEvent};
@@ -91,25 +92,51 @@ pub fn on_wheel_event(app: &AppHandle, event: &WindowEvent) {
     }
 }
 
-pub fn menu_label(enabled: bool) -> &'static str {
-    if enabled {
-        "Global Shift+Drag Hook: Enabled"
-    } else {
-        "Global Shift+Drag Hook: Disabled"
+pub fn native_modifier(key: ModifierKey) -> os_adapter::ModifierKey {
+    match key {
+        ModifierKey::Shift => os_adapter::ModifierKey::Shift,
+        ModifierKey::Ctrl => os_adapter::ModifierKey::Ctrl,
+        ModifierKey::Alt => os_adapter::ModifierKey::Alt,
     }
 }
 
-pub fn toggle(app: &AppHandle) -> tauri::Result<bool> {
-    let enabled = app.state::<MonitorControl>().toggle();
-    if !enabled {
+pub fn menu_label(settings: &AppSettings) -> String {
+    let state = if settings.global_hook_enabled {
+        "Enabled"
+    } else {
+        "Disabled"
+    };
+    format!("Global {:?}+Drag Hook: {state}", settings.modifier_key)
+}
+
+pub fn update_settings(
+    app: &AppHandle,
+    change: impl FnOnce(&mut AppSettings),
+) -> Result<(), String> {
+    let settings = app
+        .state::<Arc<SettingsStore>>()
+        .update(change)
+        .map_err(|error| error.to_string())?;
+    let changed = app.state::<MonitorControl>().configure(
+        settings.global_hook_enabled,
+        native_modifier(settings.modifier_key),
+    );
+    if changed {
         if let Some(session) = active_session(app) {
-            windows::hide_drag_wheel(app, session, false)?;
+            windows::hide_drag_wheel(app, session, false).map_err(|error| error.to_string())?;
         }
     }
     app.state::<MenuItem<tauri::Wry>>()
-        .set_text(menu_label(enabled))?;
-    app.emit("global-drag:changed", enabled)?;
-    Ok(enabled)
+        .set_text(menu_label(&settings))
+        .map_err(|error| error.to_string())?;
+    app.emit("settings:changed", settings)
+        .map_err(|error| error.to_string())
+}
+
+pub fn toggle(app: &AppHandle) -> Result<(), String> {
+    update_settings(app, |settings| {
+        settings.global_hook_enabled = !settings.global_hook_enabled
+    })
 }
 
 #[tauri::command]
@@ -118,14 +145,16 @@ pub fn global_drag_enabled(control: State<'_, MonitorControl>) -> bool {
 }
 
 #[tauri::command]
-pub fn toggle_global_drag(app: AppHandle) -> Result<(), String> {
+pub async fn toggle_global_drag(app: AppHandle) -> Result<(), String> {
     let handle = app.clone();
+    let (send, receive) = tokio::sync::oneshot::channel();
     app.run_on_main_thread(move || {
-        if let Err(error) = toggle(&handle) {
-            eprintln!("Could not toggle Global Shift+Drag: {error}");
-        }
+        let _ = send.send(toggle(&handle));
     })
-    .map_err(|error| error.to_string())
+    .map_err(|error| error.to_string())?;
+    receive
+        .await
+        .map_err(|_| "Could not toggle global drag".to_owned())?
 }
 
 #[tauri::command]

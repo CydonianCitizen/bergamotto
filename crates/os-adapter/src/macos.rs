@@ -10,7 +10,7 @@ use objc2_app_kit::{
 };
 use objc2_foundation::{NSString, NSURL};
 
-use crate::{DragPoll, NativePoller, PollError};
+use crate::{DragPoll, ModifierKey, NativePoller, PollError};
 
 const LEFT_MOUSE_BUTTON: usize = 1 << 0;
 
@@ -41,17 +41,21 @@ impl Poller {
 }
 
 impl NativePoller for Poller {
-    fn poll(&mut self) -> Result<DragPoll, PollError> {
+    fn poll(&mut self, modifier: ModifierKey) -> Result<DragPoll, PollError> {
         Ok(autoreleasepool(|_| {
             let at = Instant::now();
             let button_down = NSEvent::pressedMouseButtons() & LEFT_MOUSE_BUTTON != 0;
-            let shift_down = NSEvent::modifierFlags_class().contains(NSEventModifierFlags::Shift);
+            let modifier_down = NSEvent::modifierFlags_class().contains(match modifier {
+                ModifierKey::Shift => NSEventModifierFlags::Shift,
+                ModifierKey::Ctrl => NSEventModifierFlags::Control,
+                ModifierKey::Alt => NSEventModifierFlags::Option,
+            });
             let (x, y) = cursor_position();
             if !button_down {
                 // The shared pasteboard can retain the previous drag's contents after mouse-up.
                 self.idle_change_count = self.pasteboard.changeCount();
             }
-            DragPoll::new(at, button_down, shift_down, x, y)
+            DragPoll::new(at, button_down, modifier_down, x, y)
         }))
     }
 

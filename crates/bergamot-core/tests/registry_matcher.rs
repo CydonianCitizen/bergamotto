@@ -15,8 +15,10 @@ fn schema_validates_all_starters_and_fixtures() {
     for manifest in [
         VALID,
         include_str!("../../../shared/starter-pack/ffmpeg-compress.json"),
-        include_str!("../../../shared/starter-pack/imagemagick-convert.json"),
-        include_str!("../../../shared/starter-pack/python-script.json"),
+        include_str!("../../../shared/starter-pack/ffmpeg-extract-audio.json"),
+        include_str!("../../../shared/starter-pack/imagemagick-webp.json"),
+        include_str!("../../../shared/starter-pack/sha256-checksum.json"),
+        include_str!("../../../shared/starter-pack/zip-files.json"),
         include_str!("../../../shared/starter-pack/webhook-upload.json"),
     ] {
         let descriptor = ActionRegistry::parse_manifest(manifest).unwrap();
@@ -78,7 +80,7 @@ fn registry_persists_crud_and_does_not_restore_deleted_starters() {
     let path = temp.path().join("actions");
     let registry = ActionRegistry::open(&path).unwrap();
     let starters = registry.list_actions();
-    assert_eq!(starters.len(), 4);
+    assert_eq!(starters.len(), 6);
 
     let mut descriptor = registry.import_action(VALID).unwrap();
     assert!(matches!(

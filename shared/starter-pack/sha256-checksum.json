@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "starter.sha256-checksum",
+  "label": "Copy SHA-256 checksums",
+  "description": "Requires Python 3. Copies one SHA-256 digest and filename per selected file to the clipboard. Set a python3 override in Settings & Paths if your installation uses python.exe.",
+  "icon": "terminal",
+  "enabled": true,
+  "platforms": ["macos", "windows", "linux"],
+  "matching": { "extensions": ["*"], "cardinality": "batch" },
+  "executor": {
+    "type": "script",
+    "interpreter": "python3",
+    "scriptBody": "import hashlib\nimport sys\nfrom pathlib import Path\n\nsys.stdout.reconfigure(encoding='utf-8', errors='backslashreplace')\nfor input_path in map(Path, sys.argv[1:]):\n    digest = hashlib.sha256()\n    with input_path.open('rb') as source:\n        for chunk in iter(lambda: source.read(1024 * 1024), b''):\n            digest.update(chunk)\n    print(f'{digest.hexdigest()}  {input_path.name}')\n",
+    "timeoutSeconds": 600
+  },
+  "output": { "mode": "clipboard" }
+}

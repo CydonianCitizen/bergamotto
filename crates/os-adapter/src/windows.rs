@@ -12,7 +12,7 @@ use windows::Win32::System::Com::{
 };
 use windows::Win32::System::Variant::{VARIANT, VARIANT_0, VARIANT_0_0, VARIANT_0_0_0, VT_I4};
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetAsyncKeyState, VIRTUAL_KEY, VK_LBUTTON, VK_RBUTTON, VK_SHIFT,
+    GetAsyncKeyState, VIRTUAL_KEY, VK_CONTROL, VK_LBUTTON, VK_MENU, VK_RBUTTON, VK_SHIFT,
 };
 use windows::Win32::UI::Shell::{
     IFolderView2, IShellBrowser, IShellWindows, IWebBrowserApp, SID_STopLevelBrowser, ShellWindows,
@@ -24,7 +24,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     SM_SWAPBUTTON,
 };
 
-use crate::{DragPoll, NativePoller, PollError};
+use crate::{DragPoll, ModifierKey, NativePoller, PollError};
 
 struct ComApartment;
 
@@ -66,7 +66,7 @@ impl Poller {
 }
 
 impl NativePoller for Poller {
-    fn poll(&mut self) -> Result<DragPoll, PollError> {
+    fn poll(&mut self, modifier: ModifierKey) -> Result<DragPoll, PollError> {
         // SAFETY: MSG and POINT have valid writable storage. This thread owns the COM message queue.
         let (button, cursor) = unsafe {
             let mut message = MSG::default();
@@ -100,7 +100,11 @@ impl NativePoller for Poller {
         Ok(DragPoll::new(
             Instant::now(),
             button_down,
-            key_down(VK_SHIFT),
+            key_down(match modifier {
+                ModifierKey::Shift => VK_SHIFT,
+                ModifierKey::Ctrl => VK_CONTROL,
+                ModifierKey::Alt => VK_MENU,
+            }),
             f64::from(cursor.x),
             f64::from(cursor.y),
         ))

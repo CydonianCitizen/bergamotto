@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "starter.imagemagick-webp",
+  "label": "Convert image to WebP",
+  "description": "Requires ImageMagick 7 with WebP support. Saves each converted image beside its input at quality 85.",
+  "icon": "image",
+  "enabled": true,
+  "platforms": ["macos", "windows", "linux"],
+  "matching": { "extensions": ["jpg", "jpeg", "png", "bmp", "gif", "tiff"], "cardinality": "each" },
+  "executor": { "type": "process", "program": "magick", "args": ["${input}", "-quality", "85", "${output}"] },
+  "output": { "mode": "file", "extension": "webp" }
+}

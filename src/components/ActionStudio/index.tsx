@@ -1,13 +1,15 @@
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Aperture, Braces, Check, CircleAlert, Copy, FolderOpen, Layers3, Play, Plus, Save, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
+import { Aperture, Braces, Check, CircleAlert, Copy, FolderOpen, Layers3, Package, Play, Plus, Save, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { errorText, ipc } from '../../ipc';
-import type { ActionDescriptor } from '../../types/actions';
+import type { ActionDescriptor, AppSettings, ToolStatus } from '../../types/actions';
 import { ActionIcon } from '../ActionIcon';
 import { formatManifest, inspectManifest, newAction, validateManifest } from './manifest';
 import VisualEditor from './VisualEditor';
+import SettingsPanel from './SettingsPanel';
+import ActionPacks from './ActionPacks';
 
 type Tab = 'visual' | 'json';
 
@@ -23,7 +25,10 @@ export default function ActionStudio() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<{ message: string; error?: boolean } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [globalDrag, setGlobalDrag] = useState<boolean | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showPacks, setShowPacks] = useState(false);
+  const [dependencies, setDependencies] = useState<Record<string, ToolStatus>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const listRevision = useRef(0);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -63,12 +68,12 @@ export default function ActionStudio() {
   useEffect(() => {
     let alive = true;
     let changed = false;
-    const hook = listen<boolean>('global-drag:changed', ({ payload }) => {
+    const hook = listen<AppSettings>('settings:changed', ({ payload }) => {
       changed = true;
-      if (alive) setGlobalDrag(payload);
+      if (alive) setSettings(payload);
     });
-    void hook.then(ipc.globalDragEnabled).then(enabled => {
-      if (alive && !changed) setGlobalDrag(enabled);
+    void hook.then(ipc.getSettings).then(settings => {
+      if (alive && !changed) setSettings(settings);
     }).catch(report);
     const registry = listen('actions:updated', () => void refresh().catch(report));
     void registry.then(refresh).catch(report).finally(() => setLoading(false));
@@ -82,6 +87,14 @@ export default function ActionStudio() {
       for (const task of [registry, drops, hook]) void task.then(unlisten => unlisten()).catch(() => {});
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    void ipc.checkActionDependencies().then(results => {
+      if (active) setDependencies(results);
+    }).catch(error => { if (active) report(error); });
+    return () => { active = false; };
+  }, [actions, settings]);
 
   useEffect(() => {
     if (!draft && actions[0]) select(actions[0]);
@@ -166,6 +179,11 @@ export default function ActionStudio() {
     if (paths?.length) await ipc.presentWheel(paths);
   }
 
+  async function showImported(ids: string[]) {
+    const imported = (await refresh()).find(action => action.id === ids[0]);
+    if (imported && !dirty) select(imported);
+  }
+
   const enabled = actions.filter(action => action.enabled).length;
   const blocked = issues.length > 0 || Boolean(fieldError) || idChanged || conflict;
   const visibleAction = candidate ?? draft;
@@ -175,12 +193,14 @@ export default function ActionStudio() {
       <header className="studio-header">
         <div className="brand"><span className="brand-mark"><Aperture size={25} strokeWidth={1.7} /></span><span>Bergamotto</span></div>
         <div className="top-actions">
-          <button className="button secondary" type="button" role="switch" aria-label="Global Shift+Drag Hook"
-            aria-checked={globalDrag ?? false} disabled={globalDrag === null} onClick={() => void ipc.toggleGlobalDrag().catch(report)}>
-            Global Shift+Drag Hook{globalDrag === null ? '' : globalDrag ? ': Enabled' : ': Disabled'}
+          <button className="button secondary" type="button" role="switch" aria-label={`Global ${settings?.modifierKey ?? 'Shift'}+Drag Hook`}
+            aria-checked={settings?.globalHookEnabled ?? false} disabled={!settings} onClick={() => void ipc.toggleGlobalDrag().catch(report)}>
+            Global {settings?.modifierKey ?? 'Shift'}+Drag Hook{settings ? settings.globalHookEnabled ? ': Enabled' : ': Disabled' : ''}
           </button>
-          <button className="button secondary" onClick={() => void task(ipc.openActionsFolder)} disabled={busy}><FolderOpen size={16} /> Actions folder</button>
-          <button className="button accent" onClick={() => void task(testOnWheel)} disabled={busy}><Play size={15} /> Test on Wheel</button>
+          <button className="icon-button" type="button" aria-label="Settings & Paths" title="Settings & Paths" disabled={!settings} onClick={() => setShowSettings(true)}><SlidersHorizontal size={16} /></button>
+          <button className="icon-button" type="button" aria-label="Action Packs" title="Action Packs" disabled={busy} onClick={() => setShowPacks(true)}><Package size={16} /></button>
+          <button className="button secondary" aria-label="Actions folder" title="Actions folder" onClick={() => void task(ipc.openActionsFolder)} disabled={busy}><FolderOpen size={16} /><span className="header-action-label">Actions folder</span></button>
+          <button className="button accent" aria-label="Test on Wheel" title="Test on Wheel" onClick={() => void task(testOnWheel)} disabled={busy}><Play size={15} /><span className="header-action-label">Test on Wheel</span></button>
         </div>
       </header>
       <div className="studio-layout">
@@ -193,7 +213,12 @@ export default function ActionStudio() {
             {actions.map(action => <button key={action.id} type="button" className={`action-row ${savedId === action.id ? 'selected' : ''}`}
               aria-current={savedId === action.id ? 'true' : undefined} disabled={busy} onClick={() => select(action)}>
               <span className="list-icon"><ActionIcon icon={action.icon} type={action.executor.type} /></span>
-              <span className="row-copy"><strong>{action.label}</strong><small>{action.executor.type}</small></span>
+              <span className="row-copy"><strong>{action.label}</strong><small>{action.executor.type}
+                {dependencies[action.id] && <span className={dependencies[action.id].path ? 'tool-detected' : 'tool-missing'}
+                  title={dependencies[action.id].path ?? dependencies[action.id].message ?? undefined}>
+                  {' · '}{dependencies[action.id].tool} {dependencies[action.id].path ? 'found' : 'missing'}
+                </span>}
+              </small></span>
               <span className={`enabled-dot ${action.enabled ? 'on' : ''}`} aria-label={action.enabled ? 'Enabled' : 'Disabled'} />
             </button>)}
             {!actions.length && !draft && <p className="sidebar-empty">{loading ? 'Loading actions…' : 'No saved actions'}</p>}
@@ -256,6 +281,8 @@ export default function ActionStudio() {
           </footer>
         </section>
       </div>
+      {showSettings && settings && <SettingsPanel settings={settings} close={() => setShowSettings(false)} />}
+      {showPacks && <ActionPacks selected={current} hasEnabled={enabled > 0} onImport={showImported} close={() => setShowPacks(false)} />}
       {confirmDelete && <div className="dialog-backdrop" onKeyDown={event => { if (event.key === 'Escape') setConfirmDelete(false); }}>
         <section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
           <h2 id="delete-title">Delete action?</h2>

@@ -11,10 +11,12 @@ use crate::executors::webhook::{KeyringSecretProvider, SecretProvider, WebhookEx
 use crate::executors::ExecutionError;
 use crate::registry::ActionRegistry;
 use crate::staging::StagedFile;
+use crate::{AppSettings, SettingsStore};
 
 pub struct Dispatcher {
     registry: Arc<ActionRegistry>,
     webhook: WebhookExecutor,
+    settings: Option<Arc<SettingsStore>>,
 }
 
 impl Dispatcher {
@@ -29,7 +31,13 @@ impl Dispatcher {
         Ok(Self {
             registry,
             webhook: WebhookExecutor::new(secrets)?,
+            settings: None,
         })
+    }
+
+    pub fn with_settings(mut self, settings: Arc<SettingsStore>) -> Self {
+        self.settings = Some(settings);
+        self
     }
 
     /// Runs one job for `single` or `batch`, and one job per file for `each`.
@@ -70,6 +78,10 @@ impl Dispatcher {
         };
         report_progress(&progress, &result, total, cancel).await;
         let mut text_output = Vec::new();
+        let settings = self
+            .settings
+            .as_ref()
+            .map_or_else(AppSettings::default, |store| store.snapshot());
 
         for job in jobs {
             if cancel.is_cancelled() {
@@ -86,7 +98,8 @@ impl Dispatcher {
                 }
                 _ => {
                     let path = staged.as_ref().map(StagedFile::path);
-                    process::execute(&action.executor, job, path, cancel).await?
+                    process::execute_with_settings(&action.executor, job, path, cancel, &settings)
+                        .await?
                 }
             };
             if cancel.is_cancelled() {

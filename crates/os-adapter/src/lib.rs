@@ -25,6 +25,24 @@ use windows::Poller;
 const MIN_DRAG_DISTANCE: f64 = 16.0;
 const MIN_HOLD_TIME: Duration = Duration::from_millis(200);
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ModifierKey {
+    #[default]
+    Shift,
+    Ctrl,
+    Alt,
+}
+
+impl ModifierKey {
+    fn from_generation(generation: u64) -> Self {
+        match (generation >> 1) & 3 {
+            1 => Self::Ctrl,
+            2 => Self::Alt,
+            _ => Self::Shift,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum DragSessionEvent {
     DragStarted {
@@ -45,7 +63,7 @@ pub enum DragSessionEvent {
 pub struct DragPoll {
     pub at: Instant,
     pub button_down: bool,
-    pub shift_down: bool,
+    pub modifier_down: bool,
     pub cursor_x: f64,
     pub cursor_y: f64,
 }
@@ -54,14 +72,14 @@ impl DragPoll {
     pub fn new(
         at: Instant,
         button_down: bool,
-        shift_down: bool,
+        modifier_down: bool,
         cursor_x: f64,
         cursor_y: f64,
     ) -> Self {
         Self {
             at,
             button_down,
-            shift_down,
+            modifier_down,
             cursor_x,
             cursor_y,
         }
@@ -104,7 +122,7 @@ impl DragStateMachine {
         } = poll;
         match self.phase {
             Phase::Idle => self.phase = Phase::Pressed(poll),
-            Phase::Pressed(press) if poll.shift_down => {
+            Phase::Pressed(press) if poll.modifier_down => {
                 let distance = (cursor_x - press.cursor_x).hypot(cursor_y - press.cursor_y);
                 if distance >= MIN_DRAG_DISTANCE
                     || poll.at.duration_since(press.at) >= MIN_HOLD_TIME
@@ -118,7 +136,7 @@ impl DragStateMachine {
                     });
                 }
             }
-            Phase::Dragging(_) if !poll.shift_down => {
+            Phase::Dragging(_) if !poll.modifier_down => {
                 self.phase = Phase::Cancelled;
                 return Some(DragSessionEvent::DragModifierReleased);
             }
@@ -140,7 +158,7 @@ impl DragStateMachine {
     }
 }
 
-/// Shared toggle. A generation change invalidates events queued before a toggle.
+/// The low bits store enabled and modifier. A new generation invalidates queued events.
 #[derive(Clone)]
 pub struct MonitorControl(Arc<AtomicU64>);
 
@@ -155,8 +173,13 @@ impl MonitorControl {
         self.0.load(Ordering::Relaxed) % 2 == 1
     }
 
-    pub fn toggle(&self) -> bool {
-        self.0.fetch_add(1, Ordering::Relaxed).is_multiple_of(2)
+    pub fn configure(&self, enabled: bool, modifier: ModifierKey) -> bool {
+        let flags = (modifier as u64) << 1 | u64::from(enabled);
+        self.0
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+                (current & 7 != flags).then_some((current & !7).wrapping_add(8) | flags)
+            })
+            .is_ok()
     }
 
     pub fn accepts(&self, generation: u64) -> bool {
@@ -182,7 +205,7 @@ impl MonitorControl {
 type PollError = Box<dyn std::error::Error>;
 
 trait NativePoller {
-    fn poll(&mut self) -> Result<DragPoll, PollError>;
+    fn poll(&mut self, modifier: ModifierKey) -> Result<DragPoll, PollError>;
     fn drag_files(&mut self) -> Option<Vec<PathBuf>>;
 
     fn interval(&self, button_down: bool) -> Duration {
@@ -206,7 +229,7 @@ fn monitor(
             std::thread::sleep(poller.interval(false));
             continue;
         }
-        let poll = poller.poll()?;
+        let poll = poller.poll(ModifierKey::from_generation(generation))?;
         if previous != Some(generation) {
             state.suspend(poll);
         } else if let Some(event) = state.update(poll, || poller.drag_files()) {

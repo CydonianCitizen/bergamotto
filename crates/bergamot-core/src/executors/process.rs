@@ -11,6 +11,7 @@ use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
 
 use crate::descriptor::ExecutorConfig;
+use crate::AppSettings;
 
 use super::{ExecutionError, ExecutionOutput};
 
@@ -23,6 +24,16 @@ pub async fn execute(
     files: &[PathBuf],
     output: Option<&Path>,
     cancel: &CancellationToken,
+) -> Result<ExecutionOutput, ExecutionError> {
+    execute_with_settings(executor, files, output, cancel, &AppSettings::default()).await
+}
+
+pub async fn execute_with_settings(
+    executor: &ExecutorConfig,
+    files: &[PathBuf],
+    output: Option<&Path>,
+    cancel: &CancellationToken,
+    settings: &AppSettings,
 ) -> Result<ExecutionOutput, ExecutionError> {
     if files.is_empty() {
         return Err(ExecutionError::InvalidConfig(
@@ -38,6 +49,7 @@ pub async fn execute(
     let default_work_dir = inputs[0].parent().ok_or_else(|| {
         ExecutionError::InvalidConfig("the first input has no parent directory".to_owned())
     })?;
+    let search_path = search_path(executor, settings)?;
 
     let (mut command, timeout_seconds, _script_temp) = match executor {
         ExecutorConfig::Process {
@@ -47,7 +59,6 @@ pub async fn execute(
             env,
             timeout_seconds,
         } => {
-            reject_windows_batch_file(program)?;
             let work_dir = match working_directory {
                 Some(path) => {
                     resolve_working_directory(path, &inputs, output.as_deref(), default_work_dir)?
@@ -55,7 +66,7 @@ pub async fn execute(
                 None => default_work_dir.to_path_buf(),
             };
 
-            let mut command = Command::new(resolve_program(program)?);
+            let mut command = Command::new(resolve_program(program, settings, &search_path)?);
             for argument in args {
                 for expanded in expand_argument(argument, &inputs, output.as_deref(), &work_dir)? {
                     command.arg(expanded);
@@ -70,13 +81,14 @@ pub async fn execute(
             script_path,
             timeout_seconds,
         } => {
-            reject_windows_batch_file(interpreter)?;
             let work_dir = default_work_dir;
+            let program = resolve_program(interpreter, settings, &search_path)?;
+            let powershell = is_powershell(program.to_str().unwrap_or(interpreter));
             let script =
-                resolve_script(script_path.as_deref(), script_body.as_deref(), interpreter)?;
+                resolve_script(script_path.as_deref(), script_body.as_deref(), powershell)?;
 
-            let mut command = Command::new(resolve_program(interpreter)?);
-            if is_powershell(interpreter) {
+            let mut command = Command::new(program);
+            if powershell {
                 command.args([
                     OsStr::new("-NoProfile"),
                     OsStr::new("-NonInteractive"),
@@ -116,6 +128,7 @@ pub async fn execute(
     }
 
     command
+        .env("PATH", search_path)
         .kill_on_drop(true)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -184,7 +197,7 @@ fn resolve_working_directory(
 fn resolve_script(
     script_path: Option<&Path>,
     script_body: Option<&str>,
-    interpreter: &str,
+    powershell: bool,
 ) -> Result<ResolvedScript, ExecutionError> {
     match (script_path, script_body) {
         (Some(path), None) => Ok(ResolvedScript {
@@ -193,11 +206,7 @@ fn resolve_script(
             temp_file: None,
         }),
         (None, Some(body)) => {
-            let extension = if is_powershell(interpreter) {
-                ".ps1"
-            } else {
-                ".script"
-            };
+            let extension = if powershell { ".ps1" } else { ".script" };
             let mut file = tempfile::Builder::new()
                 .prefix(".bergamot-script-")
                 .suffix(extension)
@@ -281,12 +290,99 @@ fn expand_argument(
     Ok(vec![result])
 }
 
-fn resolve_program(program: &str) -> io::Result<PathBuf> {
-    let path = Path::new(program);
-    if path.components().count() > 1 {
-        return absolute(path);
+pub fn resolve_dependency(
+    executor: &ExecutorConfig,
+    settings: &AppSettings,
+) -> Result<Option<PathBuf>, ExecutionError> {
+    let program = match executor {
+        ExecutorConfig::Process { program, .. } => program,
+        ExecutorConfig::Script { interpreter, .. } => interpreter,
+        ExecutorConfig::Webhook { .. } => return Ok(None),
+    };
+    resolve_program(program, settings, &search_path(executor, settings)?).map(Some)
+}
+
+fn search_path(
+    executor: &ExecutorConfig,
+    settings: &AppSettings,
+) -> Result<OsString, ExecutionError> {
+    let manifest_path = match executor {
+        ExecutorConfig::Process { env, .. } => env.iter().find_map(|(name, value)| {
+            (name == "PATH" || (cfg!(windows) && name.eq_ignore_ascii_case("PATH")))
+                .then_some(value)
+        }),
+        _ => None,
+    };
+    let inherited = manifest_path
+        .map(OsString::from)
+        .or_else(|| std::env::var_os("PATH"))
+        .unwrap_or_default();
+    let directories = settings
+        .custom_paths
+        .iter()
+        .map(PathBuf::from)
+        .chain(default_tool_paths())
+        .chain(std::env::split_paths(&inherited))
+        .filter(|path| path.is_absolute());
+    std::env::join_paths(directories)
+        .map_err(|_| ExecutionError::InvalidConfig("invalid executable search path".into()))
+}
+
+fn default_tool_paths() -> Vec<PathBuf> {
+    #[cfg(target_os = "macos")]
+    return ["/opt/homebrew/bin", "/usr/local/bin"]
+        .map(PathBuf::from)
+        .into();
+    #[cfg(target_os = "linux")]
+    return std::env::home_dir()
+        .map(|home| home.join(".local/bin"))
+        .into_iter()
+        .collect();
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    Vec::new()
+}
+
+fn resolve_program(
+    program: &str,
+    settings: &AppSettings,
+    search_path: &OsStr,
+) -> Result<PathBuf, ExecutionError> {
+    reject_windows_batch_file(program)?;
+    let replacement = settings.tool_overrides.get(program);
+    let configured = replacement.map_or(program, String::as_str);
+    reject_windows_batch_file(configured)?;
+    let path = Path::new(configured);
+    let found = if replacement.is_some() || path.file_name() != Some(path.as_os_str()) {
+        executable_at(absolute(path)?)
+    } else {
+        std::env::split_paths(search_path).find_map(|directory| executable_at(directory.join(path)))
+    };
+    found.ok_or_else(|| {
+        ExecutionError::InvalidConfig(format!(
+            "Executable {configured:?} was not found or is not executable"
+        ))
+    })
+}
+
+fn executable_at(path: PathBuf) -> Option<PathBuf> {
+    #[cfg(windows)]
+    let path = if path.extension().is_none() {
+        path.with_extension("exe")
+    } else {
+        path
+    };
+    let metadata = path.metadata().ok()?;
+    if !metadata.is_file() {
+        return None;
     }
-    Ok(path.to_path_buf())
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o111 == 0 {
+            return None;
+        }
+    }
+    Some(path)
 }
 
 #[cfg(windows)]

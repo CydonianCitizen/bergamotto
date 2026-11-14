@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "starter.ffmpeg-extract-audio",
+  "label": "Extract audio to MP3",
+  "description": "Uses FFmpeg with libmp3lame to extract the first audio stream from each video. Saves an MP3 beside each input.",
+  "icon": "music",
+  "enabled": true,
+  "platforms": ["macos", "windows", "linux"],
+  "matching": { "extensions": ["mp4", "mov", "mkv", "webm", "avi", "m4v"], "cardinality": "each" },
+  "executor": {
+    "type": "process",
+    "program": "ffmpeg",
+    "args": ["-nostdin", "-y", "-i", "${input}", "-map", "0:a:0", "-c:a", "libmp3lame", "-q:a", "2", "${output}"],
+    "timeoutSeconds": 600
+  },
+  "output": { "mode": "file", "extension": "mp3", "suffix": "-audio" }
+}

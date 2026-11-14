@@ -1,12 +1,13 @@
 mod commands;
 mod global_drag;
 mod jobs;
+mod packs;
 mod windows;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use bergamot_core::{ActionRegistry, Dispatcher};
+use bergamot_core::{ActionRegistry, Dispatcher, SettingsStore};
 use directories::BaseDirs;
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 
@@ -69,7 +70,15 @@ pub fn run() {
             } else {
                 "Bergamot"
             };
-            let directory = dirs.config_dir().join(name).join("actions");
+            let config = dirs.config_dir().join(name);
+            let settings = Arc::new(SettingsStore::open(config.join("settings.json"))?);
+            let initial = settings.snapshot();
+            app.manage(settings.clone());
+            app.state::<os_adapter::MonitorControl>().configure(
+                initial.global_hook_enabled,
+                global_drag::native_modifier(initial.modifier_key),
+            );
+            let directory = config.join("actions");
             let handle = app.handle().clone();
             let registry = Arc::new(ActionRegistry::open_with_reload_handler(
                 &directory,
@@ -77,7 +86,7 @@ pub fn run() {
                     let _ = handle.emit("actions:updated", ());
                 },
             )?);
-            let dispatcher = Arc::new(Dispatcher::new(registry.clone())?);
+            let dispatcher = Arc::new(Dispatcher::new(registry.clone())?.with_settings(settings));
             app.manage(Actions {
                 directory,
                 registry,
@@ -106,6 +115,16 @@ pub fn run() {
             commands::create_action,
             commands::delete_action,
             commands::duplicate_action,
+            commands::set_secret,
+            commands::has_secret,
+            commands::delete_secret,
+            commands::get_settings,
+            commands::save_settings,
+            commands::check_action_dependencies,
+            packs::read_action_pack,
+            packs::preview_action_pack,
+            packs::import_action_pack,
+            packs::export_action_pack,
             commands::match_actions,
             commands::invoke_action,
             commands::open_actions_folder,

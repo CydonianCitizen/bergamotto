@@ -17,6 +17,7 @@ pub struct WheelPresentation {
     pub files: Vec<String>,
     pub actions: Vec<ActionDescriptor>,
     pub drag_session: Option<u64>,
+    pub modifier_key: bergamot_core::ModifierKey,
 }
 
 #[derive(Default)]
@@ -88,6 +89,10 @@ pub fn show_wheel(
             files,
             actions,
             drag_session: native_drag.then_some(state.serial),
+            modifier_key: app
+                .state::<std::sync::Arc<bergamot_core::SettingsStore>>()
+                .snapshot()
+                .modifier_key,
         };
         state.presentation.clone()
     };
@@ -204,7 +209,10 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
     let hook = MenuItem::with_id(
         app,
         "global-drag",
-        crate::global_drag::menu_label(true),
+        crate::global_drag::menu_label(
+            &app.state::<std::sync::Arc<bergamot_core::SettingsStore>>()
+                .snapshot(),
+        ),
         true,
         None::<&str>,
     )?;
@@ -218,7 +226,9 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
             let result = match event.id().as_ref() {
                 "studio" => open_studio(app),
                 "wheel" => show_wheel(app, Vec::new(), Vec::new(), None, false),
-                "global-drag" => crate::global_drag::toggle(app).map(|_| ()),
+                "global-drag" => crate::global_drag::toggle(app)
+                    .map_err(std::io::Error::other)
+                    .map_err(Into::into),
                 "quit" => {
                     app.state::<crate::jobs::Jobs>().quit(app);
                     return;

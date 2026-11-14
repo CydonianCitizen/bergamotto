@@ -1,4 +1,24 @@
 export type Platform = 'macos' | 'windows' | 'linux';
+export type ModifierKey = 'Shift' | 'Ctrl' | 'Alt';
+
+export interface AppSettings {
+  globalHookEnabled: boolean;
+  modifierKey: ModifierKey;
+  customPaths: string[];
+  toolOverrides: Record<string, string>;
+}
+
+export interface ToolStatus {
+  tool: string;
+  path: string | null;
+  message: string | null;
+}
+
+export type PackCollision = 'reject' | 'overwrite' | 'duplicate';
+export interface PackPreview {
+  count: number;
+  collisions: string[];
+}
 export type Cardinality = 'single' | 'each' | 'batch';
 export type OutputMode = 'none' | 'file' | 'clipboard' | 'stdout';
 
@@ -79,6 +99,7 @@ export interface WheelPresentation {
   files: string[];
   actions: ActionDescriptor[];
   dragSession: number | null;
+  modifierKey: ModifierKey;
 }
 
 export interface JobProgress extends ActionProgress {

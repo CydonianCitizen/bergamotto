@@ -107,7 +107,30 @@ Every action in Bergamotto lives as a standalone `.json` file inside your OS con
 }
 ```
 
-(Secrets like `credentialKey` are stored safely in macOS Keychain, Windows Credential Manager, or Linux Secret Service—never in plaintext JSON).
+`credentialKey` names a token in macOS Keychain, Windows Credential Manager, or Linux Secret Service. Enter or remove the token in the webhook editor. Action JSON and exports carry the key name. Configure the token separately on each machine. Linux requires an available, unlocked D-Bus Secret Service provider for credential operations.
+
+### Settings & Paths
+
+Open **Settings & Paths** in Action Studio to choose Shift, Ctrl, or Alt for the global hook. The tray and Studio share the toggle, and both the modifier and toggle persist in `settings.json`. On macOS, Alt is Option.
+
+For a missing tool, add an absolute executable directory or an override from the manifest's tool name to the absolute executable path. Bergamotto searches custom directories first, then platform defaults (`/opt/homebrew/bin` and `/usr/local/bin` on macOS, `~/.local/bin` on Linux), then `PATH`. Overrides take precedence. Studio checks availability with the same resolver used to launch the action.
+
+### Action Packs
+
+In **Action Packs**, export one saved action or all enabled actions to a `.bergamot-pack.json` file or the clipboard. Import accepts either a pack array or a single action JSON. Studio previews matching IDs and lets you overwrite them or keep both. Inspect imported commands and webhook URLs before running them.
+
+New config directories get six editable starters. Existing action files remain as saved.
+
+| Starter | Requirement and result |
+| --- | --- |
+| Compress video to MP4 | FFmpeg with libx264. Writes an H.264 MP4 beside each input. |
+| Extract audio to MP3 | FFmpeg with libmp3lame. Writes the first audio stream as MP3. |
+| Convert image to WebP | ImageMagick 7 with WebP support. Writes one WebP per input. |
+| Copy SHA-256 checksums | Python 3. Copies one digest and filename per input. |
+| Archive files to ZIP | Python 3. Writes one archive beside the first input. |
+| Upload to webhook | An HTTP endpoint accepting multipart POST. Configure the URL before enabling. |
+
+If Python 3 is installed as `python.exe`, add a `python3` override in **Settings & Paths**.
 
 ---
 

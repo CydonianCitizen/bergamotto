@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "starter.webhook-upload",
   "label": "Upload to webhook",
-  "description": "Set your endpoint before enabling this template.",
+  "description": "Set your endpoint before enabling this template. Sends all selected files in one multipart POST. Add a credential key and store its token in the OS credential store if required.",
   "icon": "upload-cloud",
   "enabled": false,
   "platforms": ["macos", "windows", "linux"],

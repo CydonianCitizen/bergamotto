@@ -10,7 +10,7 @@ import { center, hitWedge, wedge } from './wheelGeometry';
 const pageSize = 8;
 // Wry sends GTK widget coordinates and AppKit points, but Win32 screen pixels.
 const physicalDragCoordinates = navigator.userAgent.includes('Windows');
-const empty: WheelPresentation = { files: [], actions: [], dragSession: null };
+const empty: WheelPresentation = { files: [], actions: [], dragSession: null, modifierKey: 'Shift' };
 type Point = { x: number; y: number };
 
 export default function RadialWheel() {
@@ -116,17 +116,17 @@ export default function RadialWheel() {
       getCurrentWindow().onDragDropEvent(({ payload }) => {
         switch (payload.type) {
           case 'enter': {
-            const { files, actions, dragSession } = latest.selection;
+            const { files, actions, dragSession, modifierKey } = latest.selection;
             const knownFiles = sameFiles(files, payload.paths);
             const request = ++dragRevision;
-            latest.drag = { files: payload.paths, actions: knownFiles ? actions : [], dragSession };
+            latest.drag = { files: payload.paths, actions: knownFiles ? actions : [], dragSession, modifierKey };
             setDrag(latest.drag);
             setPoint(logical(payload.position));
             setNotice('');
             pendingMatch = ipc.matchActions(payload.paths);
             void pendingMatch.then(actions => {
               if (alive && request === dragRevision) {
-                latest.drag = { files: payload.paths, actions, dragSession };
+                latest.drag = { files: payload.paths, actions, dragSession, modifierKey };
                 setDrag(latest.drag);
               }
             }).catch(fail);
@@ -139,7 +139,7 @@ export default function RadialWheel() {
             clearDrag();
             break;
           case 'drop': {
-            const { dragSession } = latest.selection;
+            const { dragSession, modifierKey } = latest.selection;
             const payloadPosition = logical(payload.position);
             const preview = latest.drag ?? latest.selection;
             const previewMatches = sameFiles(preview.files, payload.paths);
@@ -157,14 +157,14 @@ export default function RadialWheel() {
               break;
             }
             const target = actionAtDrop(matched, page, payloadPosition);
-            present({ files: payload.paths, actions: matched, dragSession });
+            present({ files: payload.paths, actions: matched, dragSession, modifierKey });
             if (target) {
               void execute(target, payload.paths);
             } else {
               const request = revision;
               void ipc.matchActions(payload.paths).then(actions => {
                 if (alive && revision === request) {
-                  latest.selection = { files: payload.paths, actions, dragSession };
+                  latest.selection = { files: payload.paths, actions, dragSession, modifierKey };
                   setSelection(latest.selection);
                 }
               }).catch(fail);
@@ -241,7 +241,7 @@ export default function RadialWheel() {
         onClick={() => { void hideWheel(dragSession).catch(error => setNotice(errorText(error))); }}>
         {active.files.length ? <FileStack size={23} /> : <Upload size={23} />}
         <strong>{active.files.length ? `${active.files.length} ${active.files.length === 1 ? 'file' : 'files'}` : 'Drop files'}</strong>
-        <span>{active.files.length ? (extensions.size > 1 ? 'Mixed types' : [...extensions][0] || 'Selected') : dropRequired ? 'Release Shift to close' : 'Esc to close'}</span>
+        <span>{active.files.length ? (extensions.size > 1 ? 'Mixed types' : [...extensions][0] || 'Selected') : dropRequired ? `Release ${selection.modifierKey} to close` : 'Esc to close'}</span>
       </button>
       <div className="wheel-caption" aria-live="polite">
         {notice ? <span className="wheel-notice">{notice}</span> : pages > 1 ? (

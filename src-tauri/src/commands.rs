@@ -1,9 +1,13 @@
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use bergamot_core::{
-    ActionDescriptor, ActionInvocation, ActionRegistry, Dispatcher, DragContext, Platform,
+    ActionDescriptor, ActionInvocation, ActionRegistry, AppSettings, Dispatcher, DragContext,
+    ExecutorConfig, KeyringSecretStore, ModifierKey, Platform, SecretError, SecretStore,
+    SettingsStore,
 };
+use serde::Serialize;
 use tauri::{AppHandle, Manager, PhysicalPosition, Position, State};
 use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
@@ -14,6 +18,103 @@ pub struct Actions {
     pub directory: PathBuf,
     pub registry: Arc<ActionRegistry>,
     pub dispatcher: Arc<Dispatcher>,
+}
+
+async fn access_secret<T: Send + 'static>(
+    operation: impl FnOnce(KeyringSecretStore) -> Result<T, SecretError> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(move || operation(KeyringSecretStore))
+        .await
+        .map_err(|_| "Credential store operation failed".to_owned())?
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn set_secret(key: String, value: String) -> Result<(), String> {
+    access_secret(move |store| store.set_secret(&key, &value)).await
+}
+
+#[tauri::command]
+pub async fn has_secret(key: String) -> Result<bool, String> {
+    access_secret(move |store| store.has_secret(&key)).await
+}
+
+#[tauri::command]
+pub async fn delete_secret(key: String) -> Result<(), String> {
+    access_secret(move |store| store.delete_secret(&key)).await
+}
+
+#[tauri::command]
+pub fn get_settings(settings: State<'_, Arc<SettingsStore>>) -> AppSettings {
+    settings.snapshot()
+}
+
+#[tauri::command]
+pub async fn save_settings(
+    app: AppHandle,
+    modifier_key: ModifierKey,
+    custom_paths: Vec<String>,
+    tool_overrides: HashMap<String, String>,
+) -> Result<(), String> {
+    let handle = app.clone();
+    let (send, receive) = tokio::sync::oneshot::channel();
+    app.run_on_main_thread(move || {
+        let result = crate::global_drag::update_settings(&handle, |settings| {
+            settings.modifier_key = modifier_key;
+            settings.custom_paths = custom_paths;
+            settings.tool_overrides = tool_overrides;
+        });
+        let _ = send.send(result);
+    })
+    .map_err(|error| error.to_string())?;
+    receive
+        .await
+        .map_err(|_| "Could not save settings".to_owned())?
+}
+
+#[derive(Serialize)]
+pub struct ToolStatus {
+    tool: String,
+    path: Option<PathBuf>,
+    message: Option<String>,
+}
+
+#[tauri::command]
+pub async fn check_action_dependencies(
+    actions: State<'_, Actions>,
+    settings: State<'_, Arc<SettingsStore>>,
+) -> Result<BTreeMap<String, ToolStatus>, String> {
+    let actions = actions.registry.list_actions();
+    let settings = settings.snapshot();
+    tauri::async_runtime::spawn_blocking(move || {
+        actions
+            .into_iter()
+            .filter_map(|action| {
+                let tool = match &action.executor {
+                    ExecutorConfig::Process { program, .. } => program.clone(),
+                    ExecutorConfig::Script { interpreter, .. } => interpreter.clone(),
+                    ExecutorConfig::Webhook { .. } => return None,
+                };
+                let (path, message) = match bergamot_core::executors::process::resolve_dependency(
+                    &action.executor,
+                    &settings,
+                ) {
+                    Ok(path) => (path, None),
+                    Err(error) => (None, Some(error.to_string())),
+                };
+                Some((
+                    action.id,
+                    ToolStatus {
+                        tool,
+                        path,
+                        message,
+                    },
+                ))
+            })
+            .collect()
+    })
+    .await
+    .map_err(|_| "Could not check action dependencies".to_owned())
 }
 
 pub fn context(files: Vec<String>) -> Result<DragContext, String> {

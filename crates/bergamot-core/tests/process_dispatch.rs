@@ -7,8 +7,8 @@ use std::time::{Duration, Instant};
 use bergamot_core::executors::process;
 use bergamot_core::staging::StagedFile;
 use bergamot_core::{
-    ActionInvocation, ActionRegistry, CancellationToken, Cardinality, Dispatcher, DragContext,
-    ExecutionError, ExecutorConfig, OutputConfig, OutputMode, Platform,
+    ActionInvocation, ActionRegistry, AppSettings, CancellationToken, Cardinality, Dispatcher,
+    DragContext, ExecutionError, ExecutorConfig, OutputConfig, OutputMode, Platform,
 };
 use tempfile::tempdir;
 use tokio::sync::mpsc;
@@ -16,6 +16,80 @@ use tokio::sync::mpsc;
 const VALID: &str = include_str!("../../../shared/fixtures/valid-process.json");
 const FILE_NAME: &str = "my file $(echo hacked) & test.txt";
 const CHILD_MARKER: &str = "process-fixture-heartbeat";
+
+#[tokio::test]
+async fn executable_overrides_are_shared_by_detection_and_execution() {
+    let temp = tempdir().unwrap();
+    let path = temp.path().join(FILE_NAME);
+    fs::write(&path, "input").unwrap();
+    let mut executor = fixture_process("print", &["${input}"], 5);
+    let ExecutorConfig::Process { program, .. } = &mut executor else {
+        unreachable!()
+    };
+    *program = "bergamot-executable-fixture".into();
+    let settings = AppSettings {
+        tool_overrides: [(
+            program.clone(),
+            std::env::current_exe()
+                .unwrap()
+                .to_string_lossy()
+                .into_owned(),
+        )]
+        .into(),
+        ..Default::default()
+    };
+    assert!(process::resolve_dependency(&executor, &settings)
+        .unwrap()
+        .unwrap()
+        .is_absolute());
+    let output = process::execute_with_settings(
+        &executor,
+        std::slice::from_ref(&path),
+        None,
+        &CancellationToken::new(),
+        &settings,
+    )
+    .await
+    .unwrap();
+    assert!(String::from_utf8_lossy(&output.stdout).contains(FILE_NAME));
+    assert!(process::resolve_dependency(&executor, &AppSettings::default()).is_err());
+}
+
+#[tokio::test]
+async fn custom_search_paths_find_tools_and_are_inherited_by_the_child() {
+    let temp = tempdir().unwrap();
+    let tools = temp.path().join("custom tools");
+    fs::create_dir(&tools).unwrap();
+    let program = "bergamot-custom-path-fixture";
+    let executable = tools.join(format!("{program}{}", std::env::consts::EXE_SUFFIX));
+    fs::copy(std::env::current_exe().unwrap(), &executable).unwrap();
+    let input = temp.path().join(FILE_NAME);
+    fs::write(&input, "input").unwrap();
+    let mut executor = fixture_process("print-path", &[], 5);
+    let ExecutorConfig::Process { program: tool, .. } = &mut executor else {
+        unreachable!()
+    };
+    *tool = program.to_owned();
+    let settings = AppSettings {
+        custom_paths: vec![tools.to_string_lossy().into_owned()],
+        ..Default::default()
+    };
+    assert_eq!(
+        process::resolve_dependency(&executor, &settings).unwrap(),
+        Some(executable)
+    );
+    let output = process::execute_with_settings(
+        &executor,
+        &[input],
+        None,
+        &CancellationToken::new(),
+        &settings,
+    )
+    .await
+    .unwrap();
+    assert!(String::from_utf8_lossy(&output.stdout)
+        .contains(&format!("first PATH directory: {}", tools.display())));
+}
 
 #[tokio::test]
 async fn process_expands_each_input_as_one_literal_argument() {
@@ -381,6 +455,13 @@ fn process_fixture() {
             for arg in args {
                 println!("fixture argument: {}", arg.to_string_lossy());
             }
+        }
+        "print-path" => {
+            let path = std::env::var_os("PATH").unwrap();
+            println!(
+                "first PATH directory: {}",
+                std::env::split_paths(&path).next().unwrap().display()
+            );
         }
         "write" | "write-then-fail" => {
             fs::write(args.next().unwrap(), b"converted").unwrap();

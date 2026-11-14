@@ -187,6 +187,23 @@ input[type="checkbox"] { accent-color: #bddb89; }
 .confirm-dialog h2 { font-size: 23px; font-weight: 750; letter-spacing: -.04em; }
 .confirm-dialog p { color: #b5c6b8; margin: 8px 0 18px; overflow-wrap: anywhere; }
 .confirm-dialog > div { display: flex; justify-content: end; gap: 8px; }
+.webhook-secret { display: grid; gap: 10px; padding: 13px; border: 1px solid var(--line); border-radius: 9px; }
+.credential-heading { display: flex; align-items: center; gap: 10px; }
+.credential-status { border-radius: 6px; padding: 2px 6px; font-size: 11px; }
+.credential-status.configured { color: #d3ed9c; background: #2e402b; }
+.credential-status.missing { color: #f0c377; background: #453722; }
+.tool-detected { color: #b5d291; }
+.tool-missing { color: #f0c377; }
+.studio-dialog { width: min(600px, 91vw); max-height: 90vh; overflow: auto; margin: auto; color: inherit; padding: 23px; background: #202c24; border: 1px solid #45584a; border-radius: 15px; }
+.studio-dialog::backdrop { background: #09110cc4; }
+.studio-dialog h2 { font-size: 23px; font-weight: 750; }
+.studio-dialog form, .studio-dialog fieldset { display: grid; gap: 13px; min-width: 0; }
+.studio-dialog .footer-buttons { justify-content: end; flex-wrap: wrap; }
+.tool-override { display: grid; gap: 8px; grid-template-columns: minmax(100px, 1fr) minmax(140px, 2fr) auto; align-items: center; }
+.packs-content { display: grid; gap: 15px; }
+.packs-content > fieldset { border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px 12px; }
+.packs-content legend { padding: 0 5px; font-weight: 700; }
+.pack-collisions { color: #f0c377; overflow-wrap: anywhere; }
 
 .wheel-view { position: relative; width: 420px; height: 420px; isolation: isolate; user-select: none; }
 .wheel-halo {
@@ -258,6 +275,7 @@ input[type="checkbox"] { accent-color: #bddb89; }
 @media (max-width: 760px) {
   .top-actions { gap: 6px; }
   .top-actions .button { padding-inline: 8px; gap: 6px; }
+  .top-actions .header-action-label { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }

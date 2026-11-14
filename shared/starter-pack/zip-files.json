@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "starter.zip-files",
+  "label": "Archive files to ZIP",
+  "description": "Requires Python 3. Creates one ZIP beside the first selected file. Duplicate basenames inside the archive get numbered names. Set a python3 override if your installation uses python.exe.",
+  "icon": "archive",
+  "enabled": true,
+  "platforms": ["macos", "windows", "linux"],
+  "matching": { "extensions": ["*"], "cardinality": "batch" },
+  "executor": {
+    "type": "script",
+    "interpreter": "python3",
+    "scriptBody": "import os\nimport sys\nfrom pathlib import Path\nfrom zipfile import ZipFile, ZIP_DEFLATED\n\nused_names = set()\nwith ZipFile(os.environ['BERGAMOT_OUTPUT'], 'w', compression=ZIP_DEFLATED) as archive:\n    for path in map(Path, sys.argv[1:]):\n        if not path.is_file():\n            raise ValueError(f'Expected a file: {path}')\n        name = path.name\n        number = 1\n        while name.casefold() in used_names:\n            name = f'{path.stem} ({number}){path.suffix}'\n            number += 1\n        used_names.add(name.casefold())\n        archive.write(path, arcname=name)\n",
+    "timeoutSeconds": 600
+  },
+  "output": { "mode": "file", "extension": "zip", "suffix": "-archive" }
+}

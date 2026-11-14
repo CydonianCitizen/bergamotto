@@ -1,6 +1,7 @@
 import { Arguments, Extensions, Field, Section, StringMap } from './Fields';
 import { executors, platformLabels, platforms } from './manifest';
 import type { ActionDescriptor, Cardinality, ExecutorConfig, OutputMode } from '../../types/actions';
+import WebhookSecret from './WebhookSecret';
 
 const optional = (value: string) => value || undefined;
 
@@ -95,6 +96,7 @@ export default function VisualEditor({ action, isNew, update, onFieldError }: {
           <Field label="Credential key"><input value={executor.credentialKey ?? ''} onChange={event => changeExecutor({ ...executor, credentialKey: optional(event.target.value) })} /></Field>
         </div>
         <StringMap label="Headers" value={executor.headers} onError={onFieldError} onChange={headers => changeExecutor({ ...executor, headers })} />
+        {executor.credentialKey?.trim() && <WebhookSecret key={executor.credentialKey} credentialKey={executor.credentialKey} />}
       </>}
     </Section>
     <Section title="Output" detail="Choose where the result should go.">

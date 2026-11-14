@@ -5,7 +5,7 @@ use x11rb::connection::Connection;
 use x11rb::protocol::xproto::{Atom, ConnectionExt, KeyButMask, Window};
 use x11rb::rust_connection::RustConnection;
 
-use crate::{DragPoll, NativePoller, PollError};
+use crate::{DragPoll, ModifierKey, NativePoller, PollError};
 
 fn session_type(session: Option<&str>, wayland: bool, x11: bool) -> Session {
     match session {
@@ -68,13 +68,17 @@ impl Poller {
 }
 
 impl NativePoller for Poller {
-    fn poll(&mut self) -> Result<DragPoll, PollError> {
+    fn poll(&mut self, modifier: ModifierKey) -> Result<DragPoll, PollError> {
         let at = Instant::now();
         let pointer = self.connection.query_pointer(self.root)?.reply()?;
         Ok(DragPoll::new(
             at,
             pointer.mask.contains(KeyButMask::BUTTON1),
-            pointer.mask.contains(KeyButMask::SHIFT),
+            pointer.mask.contains(match modifier {
+                ModifierKey::Shift => KeyButMask::SHIFT,
+                ModifierKey::Ctrl => KeyButMask::CONTROL,
+                ModifierKey::Alt => KeyButMask::MOD1,
+            }),
             f64::from(pointer.root_x),
             f64::from(pointer.root_y),
         ))
