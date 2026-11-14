@@ -4,7 +4,7 @@ use std::sync::Arc;
 use bergamot_core::{
     ActionDescriptor, ActionInvocation, ActionRegistry, Dispatcher, DragContext, Platform,
 };
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, PhysicalPosition, Position, State};
 use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
 
@@ -84,7 +84,15 @@ pub fn invoke_action(
     state: State<'_, Actions>,
     action_id: String,
     files: Vec<String>,
+    drag_session: Option<u64>,
 ) -> Result<String, String> {
+    if let Some(session) = drag_session {
+        let wheel = app.state::<windows::WheelState>();
+        let wheel = wheel.lock().unwrap();
+        if wheel.presentation.drag_session != Some(session) || !wheel.received_drop {
+            return Err("This drag session has ended".into());
+        }
+    }
     let context = context(files)?;
     let action = state
         .registry
@@ -123,20 +131,28 @@ pub fn present_wheel(
     y: Option<f64>,
 ) -> Result<(), String> {
     let position = match (x, y) {
-        (Some(x), Some(y)) if x.is_finite() && y.is_finite() => Some((x, y)),
+        (Some(x), Some(y)) if x.is_finite() && y.is_finite() => {
+            Some(PhysicalPosition::new(x, y).into())
+        }
         (None, None) => None,
         _ => return Err("Provide both wheel coordinates in physical screen pixels".into()),
     };
+    present_files(&app, &state, files, position, false)
+}
+
+pub fn present_files(
+    app: &AppHandle,
+    state: &Actions,
+    files: Vec<String>,
+    position: Option<Position>,
+    native_drag: bool,
+) -> Result<(), String> {
     let actions = state.registry.available_actions(&context(files.clone())?);
-    windows::show_wheel(
-        &app,
-        windows::WheelPresentation { files, actions },
-        position,
-    )
-    .map_err(|error| error.to_string())
+    windows::show_wheel(app, files, actions, position, native_drag)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 pub fn wheel_state(state: State<'_, windows::WheelState>) -> windows::WheelPresentation {
-    state.0.lock().unwrap().clone()
+    state.lock().unwrap().presentation.clone()
 }

@@ -23,6 +23,7 @@ export default function ActionStudio() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<{ message: string; error?: boolean } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [globalDrag, setGlobalDrag] = useState<boolean | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const listRevision = useRef(0);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -60,6 +61,15 @@ export default function ActionStudio() {
   }
 
   useEffect(() => {
+    let alive = true;
+    let changed = false;
+    const hook = listen<boolean>('global-drag:changed', ({ payload }) => {
+      changed = true;
+      if (alive) setGlobalDrag(payload);
+    });
+    void hook.then(ipc.globalDragEnabled).then(enabled => {
+      if (alive && !changed) setGlobalDrag(enabled);
+    }).catch(report);
     const registry = listen('actions:updated', () => void refresh().catch(report));
     void registry.then(refresh).catch(report).finally(() => setLoading(false));
     const drops = getCurrentWindow().onDragDropEvent(({ payload }) => {
@@ -68,7 +78,8 @@ export default function ActionStudio() {
     });
     void drops.catch(report);
     return () => {
-      for (const task of [registry, drops]) void task.then(unlisten => unlisten()).catch(() => {});
+      alive = false;
+      for (const task of [registry, drops, hook]) void task.then(unlisten => unlisten()).catch(() => {});
     };
   }, []);
 
@@ -164,6 +175,10 @@ export default function ActionStudio() {
       <header className="studio-header">
         <div className="brand"><span className="brand-mark"><Aperture size={25} strokeWidth={1.7} /></span><span>Bergamotto</span></div>
         <div className="top-actions">
+          <button className="button secondary" type="button" role="switch" aria-label="Global Shift+Drag Hook"
+            aria-checked={globalDrag ?? false} disabled={globalDrag === null} onClick={() => void ipc.toggleGlobalDrag().catch(report)}>
+            Global Shift+Drag Hook{globalDrag === null ? '' : globalDrag ? ': Enabled' : ': Disabled'}
+          </button>
           <button className="button secondary" onClick={() => void task(ipc.openActionsFolder)} disabled={busy}><FolderOpen size={16} /> Actions folder</button>
           <button className="button accent" onClick={() => void task(testOnWheel)} disabled={busy}><Play size={15} /> Test on Wheel</button>
         </div>

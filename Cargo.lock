@@ -293,7 +293,11 @@ name = "bergamot"
 version = "0.1.0"
 dependencies = [
  "bergamot-core",
+ "core-graphics",
  "directories",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "os-adapter",
  "serde",
  "serde_json",
  "tauri",
@@ -3072,6 +3076,14 @@ dependencies = [
 [[package]]
 name = "os-adapter"
 version = "0.1.0"
+dependencies = [
+ "core-graphics",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "windows",
+ "x11rb",
+]
 
 [[package]]
 name = "os_pipe"

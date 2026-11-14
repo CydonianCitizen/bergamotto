@@ -147,7 +147,9 @@ With a development build running, this command forwards files to the wheel. It a
 ./target/debug/bergamot --radial-here "/path/to/sample file.txt"
 ```
 
-Global Shift+Drag interception is planned for Milestone 3. Native Wayland compositors control top-level window placement, so overlay positioning depends on the compositor.
+On macOS, Windows, and X11, hold **Shift** while dragging files to open the wheel under the cursor, then drop on a slice. Release **Shift** to dismiss the wheel mid-drag. Use **Global Shift+Drag Hook** in the tray or Action Studio header to pause or resume detection.
+
+On Wayland, use `bergamot --radial-here <files...>`. The compositor controls where the wheel appears.
 
 ### Run Core Tests
 ```bash

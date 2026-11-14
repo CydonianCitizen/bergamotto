@@ -10,7 +10,7 @@ import { center, hitWedge, wedge } from './wheelGeometry';
 const pageSize = 8;
 // Wry sends GTK widget coordinates and AppKit points, but Win32 screen pixels.
 const physicalDragCoordinates = navigator.userAgent.includes('Windows');
-const empty: WheelPresentation = { files: [], actions: [] };
+const empty: WheelPresentation = { files: [], actions: [], dragSession: null };
 type Point = { x: number; y: number };
 
 export default function RadialWheel() {
@@ -23,6 +23,8 @@ export default function RadialWheel() {
   const model = useRef({ selection: empty, drag: null as WheelPresentation | null, page: 0 });
   const invoking = useRef(false);
   const active = drag ?? selection;
+  const dragSession = selection.dragSession;
+  const dropRequired = dragSession !== null;
   const pages = Math.max(1, Math.ceil(active.actions.length / pageSize));
   const visiblePage = Math.min(page, pages - 1);
   const actions = active.actions.slice(visiblePage * pageSize, (visiblePage + 1) * pageSize);
@@ -33,14 +35,14 @@ export default function RadialWheel() {
     return dot > 0 ? name.slice(dot + 1).toUpperCase() : '';
   }));
 
-  async function execute(action: ActionDescriptor, files: string[]) {
+  async function execute(action: ActionDescriptor, files: string[], session: number | null = null) {
     if (invoking.current) return;
     invoking.current = true;
     setBusy(true);
     setNotice('');
     try {
-      await ipc.invokeAction(action.id, files);
-      await getCurrentWindow().hide();
+      await ipc.invokeAction(action.id, files, session);
+      await hideWheel(session);
     } catch (error) {
       setNotice(errorText(error));
     } finally {
@@ -49,15 +51,21 @@ export default function RadialWheel() {
     }
   }
 
+  function hideWheel(session: number | null) {
+    return session === null ? getCurrentWindow().hide() : ipc.closeDragWheel(session);
+  }
+
   useEffect(() => {
     let alive = true;
     let revision = 0;
     let dragRevision = 0;
     let presentationEvent = false;
+    let pendingMatch: Promise<ActionDescriptor[]> | null = null;
     const latest = model.current;
 
     function clearDrag() {
       dragRevision += 1;
+      pendingMatch = null;
       latest.drag = null;
       setDrag(null);
       setPoint(null);
@@ -100,7 +108,7 @@ export default function RadialWheel() {
         const request = ++revision;
         void ipc.matchActions(files).then(actions => {
           if (alive && request === revision) {
-            latest.selection = { files, actions };
+            latest.selection = { ...latest.selection, actions };
             setSelection(latest.selection);
           }
         }).catch(fail);
@@ -108,14 +116,17 @@ export default function RadialWheel() {
       getCurrentWindow().onDragDropEvent(({ payload }) => {
         switch (payload.type) {
           case 'enter': {
+            const { files, actions, dragSession } = latest.selection;
+            const knownFiles = sameFiles(files, payload.paths);
             const request = ++dragRevision;
-            latest.drag = { files: payload.paths, actions: [] };
+            latest.drag = { files: payload.paths, actions: knownFiles ? actions : [], dragSession };
             setDrag(latest.drag);
             setPoint(logical(payload.position));
             setNotice('');
-            void ipc.matchActions(payload.paths).then(actions => {
+            pendingMatch = ipc.matchActions(payload.paths);
+            void pendingMatch.then(actions => {
               if (alive && request === dragRevision) {
-                latest.drag = { files: payload.paths, actions };
+                latest.drag = { files: payload.paths, actions, dragSession };
                 setDrag(latest.drag);
               }
             }).catch(fail);
@@ -128,21 +139,32 @@ export default function RadialWheel() {
             clearDrag();
             break;
           case 'drop': {
+            const { dragSession } = latest.selection;
             const payloadPosition = logical(payload.position);
-            const matched = latest.drag?.actions ?? [];
-            const lastPage = Math.max(0, Math.ceil(matched.length / pageSize) - 1);
-            const shownPage = Math.min(latest.page, lastPage);
-            const shown = matched.slice(shownPage * pageSize, (shownPage + 1) * pageSize);
-            const index = hitWedge(payloadPosition.x, payloadPosition.y, shown.length);
-            const target = index === null ? undefined : shown[index];
-            present({ files: payload.paths, actions: matched });
+            const preview = latest.drag ?? latest.selection;
+            const previewMatches = sameFiles(preview.files, payload.paths);
+            const matched = previewMatches ? preview.actions : [];
+            const page = latest.page;
+            if (dragSession !== null) {
+              const matching = previewMatches && matched.length ? Promise.resolve(matched)
+                : (previewMatches ? pendingMatch : null) ?? ipc.matchActions(payload.paths);
+              clearDrag();
+              void matching.then(actions => {
+                if (!alive || latest.selection.dragSession !== dragSession) return;
+                const target = actionAtDrop(actions, page, payloadPosition);
+                return target ? execute(target, payload.paths, dragSession) : hideWheel(dragSession);
+              }).catch(fail);
+              break;
+            }
+            const target = actionAtDrop(matched, page, payloadPosition);
+            present({ files: payload.paths, actions: matched, dragSession });
             if (target) {
               void execute(target, payload.paths);
             } else {
               const request = revision;
               void ipc.matchActions(payload.paths).then(actions => {
                 if (alive && revision === request) {
-                  latest.selection = { files: payload.paths, actions };
+                  latest.selection = { files: payload.paths, actions, dragSession };
                   setSelection(latest.selection);
                 }
               }).catch(fail);
@@ -154,7 +176,7 @@ export default function RadialWheel() {
     ];
 
     function escape(event: KeyboardEvent) {
-      if (event.key === 'Escape') void getCurrentWindow().hide().catch(fail);
+      if (event.key === 'Escape') void hideWheel(latest.selection.dragSession).catch(fail);
     }
     window.addEventListener('keydown', escape);
     for (const subscription of subscriptions) void subscription.catch(fail);
@@ -197,10 +219,10 @@ export default function RadialWheel() {
           const shortLabel = action.label.length > 18 ? `${action.label.slice(0, 16)}…` : action.label;
           return (
             <g key={action.id} className={`wheel-wedge ${index === hovered ? 'active' : ''}`}
-              role="button" tabIndex={busy ? -1 : 0} aria-label={action.label} aria-disabled={busy}
-              onClick={() => void execute(action, active.files)}
+              role="button" tabIndex={busy || dropRequired ? -1 : 0} aria-label={action.label} aria-disabled={busy || dropRequired}
+              onClick={() => { if (!dropRequired) void execute(action, active.files); }}
               onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
+                if (!dropRequired && (event.key === 'Enter' || event.key === ' ')) {
                   event.preventDefault();
                   void execute(action, active.files);
                 }
@@ -216,10 +238,10 @@ export default function RadialWheel() {
         })}
       </svg>
       <button type="button" className={`wheel-hub ${drag ? 'dragging' : ''}`} aria-label="Hide radial wheel"
-        onClick={() => { void getCurrentWindow().hide().catch(error => setNotice(errorText(error))); }}>
+        onClick={() => { void hideWheel(dragSession).catch(error => setNotice(errorText(error))); }}>
         {active.files.length ? <FileStack size={23} /> : <Upload size={23} />}
         <strong>{active.files.length ? `${active.files.length} ${active.files.length === 1 ? 'file' : 'files'}` : 'Drop files'}</strong>
-        <span>{active.files.length ? (extensions.size > 1 ? 'Mixed types' : [...extensions][0] || 'Selected') : 'Esc to close'}</span>
+        <span>{active.files.length ? (extensions.size > 1 ? 'Mixed types' : [...extensions][0] || 'Selected') : dropRequired ? 'Release Shift to close' : 'Esc to close'}</span>
       </button>
       <div className="wheel-caption" aria-live="polite">
         {notice ? <span className="wheel-notice">{notice}</span> : pages > 1 ? (
@@ -228,8 +250,20 @@ export default function RadialWheel() {
             <span>{visiblePage + 1} / {pages}</span>
             <button aria-label="Next actions" disabled={visiblePage === pages - 1} onClick={() => turnPage(visiblePage + 1)}><ChevronRight size={17} /></button>
           </div>
-        ) : <span><MousePointer2 size={12} />{actions.length ? 'Choose an action' : active.files.length ? 'No matching actions' : 'Drop files anywhere on the wheel'}</span>}
+        ) : <span><MousePointer2 size={12} />{actions.length ? (dropRequired ? 'Drop files on a slice' : 'Choose an action') : active.files.length ? 'No matching actions' : dropRequired ? 'Waiting for files' : 'Drop files anywhere on the wheel'}</span>}
       </div>
     </main>
   );
+}
+
+function actionAtDrop(actions: ActionDescriptor[], page: number, position: Point) {
+  const lastPage = Math.max(0, Math.ceil(actions.length / pageSize) - 1);
+  const start = Math.min(page, lastPage) * pageSize;
+  const shown = actions.slice(start, start + pageSize);
+  const index = hitWedge(position.x, position.y, shown.length);
+  return index === null ? undefined : shown[index];
+}
+
+function sameFiles(first: string[], second: string[]) {
+  return first.length === second.length && first.every((file, index) => file === second[index]);
 }

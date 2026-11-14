@@ -255,6 +255,10 @@ input[type="checkbox"] { accent-color: #bddb89; }
   .editor-footer, .json-editor { padding-inline: 18px; }
   .editor-alert { margin-inline: 18px; }
 }
+@media (max-width: 760px) {
+  .top-actions { gap: 6px; }
+  .top-actions .button { padding-inline: 8px; gap: 6px; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
 }

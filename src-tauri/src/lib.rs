@@ -1,4 +1,5 @@
 mod commands;
+mod global_drag;
 mod jobs;
 mod windows;
 
@@ -27,7 +28,13 @@ fn activate(
             .iter()
             .map(|path| path.to_string_lossy().into_owned())
             .collect();
-        commands::present_wheel(app.clone(), app.state(), files, None, None)
+        commands::present_files(
+            app,
+            &app.state(),
+            files,
+            windows::cursor_position(app),
+            false,
+        )
     } else {
         windows::open_studio(app).map_err(|error| error.to_string())
     }
@@ -52,6 +59,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(windows::WheelState::default())
+        .manage(os_adapter::MonitorControl::default())
         .manage(jobs::Jobs::default())
         .setup(|app| {
             let dirs =
@@ -77,12 +85,16 @@ pub fn run() {
             });
 
             windows::create_tray(app.handle())?;
+            global_drag::start(app.handle())?;
             let args = std::env::args_os().map(|arg| arg.to_string_lossy().into_owned());
             activate(app.handle(), args, &std::env::current_dir()?)
                 .map_err(std::io::Error::other)?;
             Ok(())
         })
         .on_window_event(|window, event| {
+            if window.label() == "wheel" {
+                global_drag::on_wheel_event(window.app_handle(), event);
+            }
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
@@ -99,6 +111,9 @@ pub fn run() {
             commands::open_actions_folder,
             commands::present_wheel,
             commands::wheel_state,
+            global_drag::global_drag_enabled,
+            global_drag::toggle_global_drag,
+            global_drag::close_drag_wheel,
             jobs::cancel_job,
             jobs::dismiss_job,
             jobs::job_snapshot

@@ -78,6 +78,7 @@ export interface ActionResult {
 export interface WheelPresentation {
   files: string[];
   actions: ActionDescriptor[];
+  dragSession: number | null;
 }
 
 export interface JobProgress extends ActionProgress {

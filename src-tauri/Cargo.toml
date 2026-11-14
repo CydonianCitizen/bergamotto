@@ -10,6 +10,7 @@ tauri-build = "2"
 [dependencies]
 bergamot-core = { path = "../crates/bergamot-core" }
 directories = "6"
+os-adapter = { path = "../crates/os-adapter" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
@@ -19,6 +20,11 @@ tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
 tokio = { version = "1", features = ["sync", "time"] }
 uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = "0.25"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSWindow"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSGeometry"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
