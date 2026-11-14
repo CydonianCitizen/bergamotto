@@ -42,14 +42,14 @@ export const executors: Record<ExecutorConfig['type'], () => ExecutorConfig> = {
   webhook: () => ({ type: 'webhook', method: 'POST', url: '', timeoutSeconds: 60 }),
 };
 
-export function newAction(): ActionDescriptor {
+export function newAction(presetExtensions?: string[]): ActionDescriptor {
   return {
     schemaVersion: 1,
     id: `user.action-${crypto.randomUUID().slice(0, 8)}`,
     label: '',
     enabled: true,
     platforms: [...platforms],
-    matching: { cardinality: 'single', extensions: ['*'] },
+    matching: { cardinality: 'single', extensions: presetExtensions && presetExtensions.length ? presetExtensions : ['*'] },
     executor: executors.process(),
     output: { mode: 'none', overwriteOriginal: false },
   };

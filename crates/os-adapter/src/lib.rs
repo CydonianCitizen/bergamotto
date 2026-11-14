@@ -31,14 +31,31 @@ pub enum ModifierKey {
     Shift,
     Ctrl,
     Alt,
+    AltShift,
+    CtrlShift,
+    CtrlAlt,
 }
 
 impl ModifierKey {
-    fn from_generation(generation: u64) -> Self {
-        match (generation >> 1) & 3 {
+    pub fn from_generation(generation: u64) -> Self {
+        match (generation >> 1) & 7 {
             1 => Self::Ctrl,
             2 => Self::Alt,
+            3 => Self::AltShift,
+            4 => Self::CtrlShift,
+            5 => Self::CtrlAlt,
             _ => Self::Shift,
+        }
+    }
+
+    pub fn to_bits(self) -> u64 {
+        match self {
+            Self::Shift => 0,
+            Self::Ctrl => 1,
+            Self::Alt => 2,
+            Self::AltShift => 3,
+            Self::CtrlShift => 4,
+            Self::CtrlAlt => 5,
         }
     }
 }
@@ -174,10 +191,10 @@ impl MonitorControl {
     }
 
     pub fn configure(&self, enabled: bool, modifier: ModifierKey) -> bool {
-        let flags = (modifier as u64) << 1 | u64::from(enabled);
+        let flags = (modifier.to_bits() << 1) | u64::from(enabled);
         self.0
             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
-                (current & 7 != flags).then_some((current & !7).wrapping_add(8) | flags)
+                (current & 15 != flags).then_some((current & !15).wrapping_add(16) | flags)
             })
             .is_ok()
     }

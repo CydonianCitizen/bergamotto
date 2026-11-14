@@ -248,6 +248,112 @@ fn matcher_filters_every_file_and_returns_ids_in_stable_order() {
     assert_eq!(ids(&context), ["test.unicode", "test.wildcard"]);
 }
 
+#[test]
+fn matcher_sorts_actions_by_sort_order_and_label_deterministically() {
+    use bergamot_core::ActionMatcher;
+
+    let mut action_a = ActionRegistry::parse_manifest(VALID).unwrap();
+    action_a.id = "test.a".to_owned();
+    action_a.label = "Beta".to_owned();
+    action_a.sort_order = Some(10);
+
+    let mut action_b = ActionRegistry::parse_manifest(VALID).unwrap();
+    action_b.id = "test.b".to_owned();
+    action_b.label = "Alpha".to_owned();
+    action_b.sort_order = Some(10);
+
+    let mut action_c = ActionRegistry::parse_manifest(VALID).unwrap();
+    action_c.id = "test.c".to_owned();
+    action_c.label = "First".to_owned();
+    action_c.sort_order = Some(1);
+
+    let mut action_d = ActionRegistry::parse_manifest(VALID).unwrap();
+    action_d.id = "test.d".to_owned();
+    action_d.label = "Default Zero".to_owned();
+    action_d.sort_order = None; // Defaults to 0
+
+    let context: DragContext = serde_json::from_str(DRAG).unwrap();
+    let actions = vec![action_a, action_b, action_c, action_d];
+
+    let sorted = ActionMatcher::available_actions(&actions, &context);
+    let ids: Vec<_> = sorted.iter().map(|a| a.id.as_str()).collect();
+
+    assert_eq!(ids, vec!["test.d", "test.c", "test.b", "test.a"]);
+}
+
+#[test]
+fn backward_compatibility_with_manifests_omitting_sort_order_and_accent_color() {
+    let descriptor = ActionRegistry::parse_manifest(VALID).unwrap();
+    assert_eq!(descriptor.sort_order, None);
+    assert_eq!(descriptor.accent_color, None);
+
+    let json_with_customization = json!({
+        "schemaVersion": 1,
+        "id": "custom.order-color",
+        "label": "Customized Action",
+        "enabled": true,
+        "sortOrder": 42,
+        "accentColor": "#84cc16",
+        "platforms": ["linux", "macos", "windows"],
+        "matching": { "extensions": ["*"], "cardinality": "single" },
+        "executor": { "type": "process", "program": "echo" },
+        "output": { "mode": "none" }
+    });
+    let manifest_str = serde_json::to_string(&json_with_customization).unwrap();
+    let parsed = ActionRegistry::parse_manifest(&manifest_str).unwrap();
+    assert_eq!(parsed.sort_order, Some(42));
+    assert_eq!(parsed.accent_color.as_deref(), Some("#84cc16"));
+}
+
+#[test]
+fn reorder_actions_updates_sort_order_cleanly() {
+    let dir = tempdir().unwrap();
+    let registry = ActionRegistry::open(dir.path()).unwrap();
+
+    let mut action1 = ActionRegistry::parse_manifest(VALID).unwrap();
+    action1.id = "action.one".to_owned();
+    action1.label = "Action One".to_owned();
+    registry.save_action(&action1).unwrap();
+
+    let mut action2 = ActionRegistry::parse_manifest(VALID).unwrap();
+    action2.id = "action.two".to_owned();
+    action2.label = "Action Two".to_owned();
+    registry.save_action(&action2).unwrap();
+
+    let mut action3 = ActionRegistry::parse_manifest(VALID).unwrap();
+    action3.id = "action.three".to_owned();
+    action3.label = "Action Three".to_owned();
+    registry.save_action(&action3).unwrap();
+
+    registry
+        .reorder_actions(&[
+            "action.three".to_owned(),
+            "action.one".to_owned(),
+            "action.two".to_owned(),
+        ])
+        .unwrap();
+
+    let reloaded1 = registry.get_action("action.one").unwrap();
+    let reloaded2 = registry.get_action("action.two").unwrap();
+    let reloaded3 = registry.get_action("action.three").unwrap();
+
+    assert_eq!(reloaded3.sort_order, Some(0));
+    assert_eq!(reloaded1.sort_order, Some(1));
+    assert_eq!(reloaded2.sort_order, Some(2));
+
+    let context: DragContext = serde_json::from_str(DRAG).unwrap();
+    let matched = registry.available_actions(&context);
+    let matched_ids: Vec<_> = matched
+        .iter()
+        .map(|a| a.id.as_str())
+        .filter(|id| id.starts_with("action."))
+        .collect();
+    assert_eq!(
+        matched_ids,
+        vec!["action.three", "action.one", "action.two"]
+    );
+}
+
 fn wait_until(mut condition: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(10);
     while !condition() {

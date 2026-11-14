@@ -53,14 +53,29 @@ pub fn get_settings(settings: State<'_, Arc<SettingsStore>>) -> AppSettings {
 pub async fn save_settings(
     app: AppHandle,
     modifier_key: ModifierKey,
+    global_shortcut: Option<String>,
     custom_paths: Vec<String>,
     tool_overrides: HashMap<String, String>,
 ) -> Result<(), String> {
     let handle = app.clone();
+    let shortcut_to_apply = global_shortcut.clone();
     let (send, receive) = tokio::sync::oneshot::channel();
     app.run_on_main_thread(move || {
+        let mut shortcut_err = None;
+        if let Some(ref sc) = shortcut_to_apply {
+            if let Err(err) = crate::register_shortcut(&handle, sc) {
+                shortcut_err = Some(err);
+            }
+        }
+        if let Some(err) = shortcut_err {
+            let _ = send.send(Err(err));
+            return;
+        }
         let result = crate::global_drag::update_settings(&handle, |settings| {
             settings.modifier_key = modifier_key;
+            if let Some(sc) = shortcut_to_apply {
+                settings.global_shortcut = sc;
+            }
             settings.custom_paths = custom_paths;
             settings.tool_overrides = tool_overrides;
         });
@@ -70,6 +85,11 @@ pub async fn save_settings(
     receive
         .await
         .map_err(|_| "Could not save settings".to_owned())?
+}
+
+#[tauri::command]
+pub fn test_global_shortcut(app: AppHandle, shortcut: String) -> Result<(), String> {
+    crate::register_shortcut(&app, &shortcut)
 }
 
 #[derive(Serialize)]
@@ -134,6 +154,14 @@ pub fn save_action(state: State<'_, Actions>, action: ActionDescriptor) -> Resul
     state
         .registry
         .save_action(&action)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn reorder_actions(state: State<'_, Actions>, ordered_ids: Vec<String>) -> Result<(), String> {
+    state
+        .registry
+        .reorder_actions(&ordered_ids)
         .map_err(|error| error.to_string())
 }
 

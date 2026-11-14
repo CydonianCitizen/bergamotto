@@ -1,11 +1,19 @@
 [package]
-name = "bergamot"
+name = "bergamot-tauri"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "bergamot"
+path = "src/main.rs"
+
+[lib]
+name = "bergamot"
+path = "src/lib.rs"
+
 [build-dependencies]
-tauri-build = "2"
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 bergamot-core = { path = "../crates/bergamot-core" }
@@ -16,6 +24,7 @@ serde_json = "1"
 tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-global-shortcut = "2.4.1"
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
 tempfile = "3"

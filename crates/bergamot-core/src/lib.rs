@@ -15,6 +15,7 @@ pub use descriptor::{
 };
 pub use dispatcher::Dispatcher;
 pub use executors::ExecutionError;
+pub use matcher::ActionMatcher;
 pub use registry::{ActionRegistry, PackCollision, PackPreview, RegistryError};
 pub use secrets::{KeyringSecretStore, MemorySecretStore, SecretError, SecretStore};
 pub use settings::{AppSettings, ModifierKey, SettingsStore};

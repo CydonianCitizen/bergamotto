@@ -204,6 +204,13 @@ pub fn update_hud(app: &AppHandle, count: usize, reposition: bool) -> tauri::Res
 }
 
 pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
+    let version_info = MenuItem::with_id(
+        app,
+        "version_info",
+        format!("Bergamotto v{}", env!("CARGO_PKG_VERSION")),
+        false,
+        None::<&str>,
+    )?;
     let studio = MenuItem::with_id(app, "studio", "Open Action Studio", true, None::<&str>)?;
     let wheel = MenuItem::with_id(app, "wheel", "Test Radial Wheel", true, None::<&str>)?;
     let hook = MenuItem::with_id(
@@ -217,7 +224,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
         None::<&str>,
     )?;
     let quit = MenuItem::with_id(app, "quit", "Quit Bergamotto", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&studio, &wheel, &hook, &quit])?;
+    let menu = Menu::with_items(app, &[&version_info, &studio, &wheel, &hook, &quit])?;
     app.manage(hook);
     let mut tray = TrayIconBuilder::with_id("bergamotto")
         .menu(&menu)

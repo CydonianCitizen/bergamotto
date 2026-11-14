@@ -242,6 +242,36 @@ impl ActionRegistry {
         Ok(serde_json::to_string_pretty(&action)?)
     }
 
+    pub fn reorder_actions(&self, ordered_ids: &[String]) -> Result<(), RegistryError> {
+        let _guard = self
+            .operation_lock
+            .lock()
+            .map_err(|_| RegistryError::LockPoisoned)?;
+        self.refresh_locked()?;
+
+        let mut actions_to_update = Vec::new();
+        {
+            let state = self.state.read().map_err(|_| RegistryError::LockPoisoned)?;
+            for id in ordered_ids {
+                if state.duplicate_ids.contains(id) {
+                    return Err(RegistryError::DuplicateId(id.clone()));
+                }
+                let action = state
+                    .actions
+                    .get(id)
+                    .cloned()
+                    .ok_or_else(|| RegistryError::NotFound(id.clone()))?;
+                actions_to_update.push(action);
+            }
+        }
+
+        for (index, mut action) in actions_to_update.into_iter().enumerate() {
+            action.sort_order = Some(index as i32);
+            self.save_action_locked(&action, true)?;
+        }
+        Ok(())
+    }
+
     pub fn take_reload_errors(&self) -> Vec<String> {
         self.reload_errors
             .lock()

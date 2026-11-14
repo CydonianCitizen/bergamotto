@@ -40,6 +40,10 @@ pub struct ActionDescriptor {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sort_order: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accent_color: Option<String>,
     pub enabled: bool,
     pub platforms: Vec<Platform>,
     pub matching: MatchingRule,

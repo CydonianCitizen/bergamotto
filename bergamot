@@ -1,0 +1,13 @@
+#!/bin/bash
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -d "/tmp/bergamot-m3-deps/root/usr/lib" ]; then
+    export LD_LIBRARY_PATH="/tmp/bergamot-m3-deps/root/usr/lib:${LD_LIBRARY_PATH}"
+fi
+if [ -f "$DIR/target/release/bergamot" ]; then
+    exec "$DIR/target/release/bergamot" "$@"
+elif [ -f "$DIR/target/debug/bergamot" ]; then
+    exec "$DIR/target/debug/bergamot" "$@"
+else
+    echo "Bergamotto binary not found. Run 'cargo build' first." >&2
+    exit 1
+fi

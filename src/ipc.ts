@@ -3,6 +3,7 @@ import type { ActionDescriptor, AppSettings, JobSnapshot, PackCollision, PackPre
 
 export const ipc = {
   listActions: () => invoke<ActionDescriptor[]>('list_actions'),
+  reorderActions: (orderedIds: string[]) => invoke<void>('reorder_actions', { orderedIds }),
   setSecret: (key: string, value: string) => invoke<void>('set_secret', { key, value }),
   hasSecret: (key: string) => invoke<boolean>('has_secret', { key }),
   deleteSecret: (key: string) => invoke<void>('delete_secret', { key }),
@@ -20,8 +21,10 @@ export const ipc = {
   presentWheel: (files: string[]) => invoke<void>('present_wheel', { files }),
   wheelState: () => invoke<WheelPresentation>('wheel_state'),
   getSettings: () => invoke<AppSettings>('get_settings'),
-  saveSettings: ({ modifierKey, customPaths, toolOverrides }: AppSettings) =>
-    invoke<void>('save_settings', { modifierKey, customPaths, toolOverrides }),
+  saveSettings: ({ modifierKey, globalShortcut, customPaths, toolOverrides }: AppSettings) =>
+    invoke<void>('save_settings', { modifierKey, globalShortcut, customPaths, toolOverrides }),
+  testGlobalShortcut: (shortcut: string) =>
+    invoke<void>('test_global_shortcut', { shortcut }),
   checkActionDependencies: () => invoke<Record<string, ToolStatus>>('check_action_dependencies'),
   readActionPack: (clipboard: boolean) => invoke<string | null>('read_action_pack', { clipboard }),
   previewActionPack: (document: string) => invoke<PackPreview>('preview_action_pack', { document }),

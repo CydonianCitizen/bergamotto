@@ -97,6 +97,9 @@ pub fn native_modifier(key: ModifierKey) -> os_adapter::ModifierKey {
         ModifierKey::Shift => os_adapter::ModifierKey::Shift,
         ModifierKey::Ctrl => os_adapter::ModifierKey::Ctrl,
         ModifierKey::Alt => os_adapter::ModifierKey::Alt,
+        ModifierKey::AltShift => os_adapter::ModifierKey::AltShift,
+        ModifierKey::CtrlShift => os_adapter::ModifierKey::CtrlShift,
+        ModifierKey::CtrlAlt => os_adapter::ModifierKey::CtrlAlt,
     }
 }
 
@@ -106,7 +109,7 @@ pub fn menu_label(settings: &AppSettings) -> String {
     } else {
         "Disabled"
     };
-    format!("Global {:?}+Drag Hook: {state}", settings.modifier_key)
+    format!("Global {}+Drag Hook: {state}", settings.modifier_key)
 }
 
 pub fn update_settings(

@@ -100,11 +100,14 @@ impl NativePoller for Poller {
         Ok(DragPoll::new(
             Instant::now(),
             button_down,
-            key_down(match modifier {
-                ModifierKey::Shift => VK_SHIFT,
-                ModifierKey::Ctrl => VK_CONTROL,
-                ModifierKey::Alt => VK_MENU,
-            }),
+            match modifier {
+                ModifierKey::Shift => key_down(VK_SHIFT),
+                ModifierKey::Ctrl => key_down(VK_CONTROL),
+                ModifierKey::Alt => key_down(VK_MENU),
+                ModifierKey::AltShift => key_down(VK_MENU) && key_down(VK_SHIFT),
+                ModifierKey::CtrlShift => key_down(VK_CONTROL) && key_down(VK_SHIFT),
+                ModifierKey::CtrlAlt => key_down(VK_CONTROL) && key_down(VK_MENU),
+            },
             f64::from(cursor.x),
             f64::from(cursor.y),
         ))

@@ -71,14 +71,19 @@ impl NativePoller for Poller {
     fn poll(&mut self, modifier: ModifierKey) -> Result<DragPoll, PollError> {
         let at = Instant::now();
         let pointer = self.connection.query_pointer(self.root)?.reply()?;
+        let mask = pointer.mask;
+        let modifier_down = match modifier {
+            ModifierKey::Shift => mask.contains(KeyButMask::SHIFT),
+            ModifierKey::Ctrl => mask.contains(KeyButMask::CONTROL),
+            ModifierKey::Alt => mask.contains(KeyButMask::MOD1),
+            ModifierKey::AltShift => mask.contains(KeyButMask::MOD1 | KeyButMask::SHIFT),
+            ModifierKey::CtrlShift => mask.contains(KeyButMask::CONTROL | KeyButMask::SHIFT),
+            ModifierKey::CtrlAlt => mask.contains(KeyButMask::CONTROL | KeyButMask::MOD1),
+        };
         Ok(DragPoll::new(
             at,
-            pointer.mask.contains(KeyButMask::BUTTON1),
-            pointer.mask.contains(match modifier {
-                ModifierKey::Shift => KeyButMask::SHIFT,
-                ModifierKey::Ctrl => KeyButMask::CONTROL,
-                ModifierKey::Alt => KeyButMask::MOD1,
-            }),
+            mask.contains(KeyButMask::BUTTON1),
+            modifier_down,
             f64::from(pointer.root_x),
             f64::from(pointer.root_y),
         ))

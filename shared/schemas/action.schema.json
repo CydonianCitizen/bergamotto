@@ -10,6 +10,8 @@
     "label": { "$ref": "#/definitions/nonEmptyString" },
     "description": { "type": "string" },
     "icon": { "type": "string" },
+    "sortOrder": { "type": "integer" },
+    "accentColor": { "type": "string" },
     "enabled": { "type": "boolean" },
     "platforms": {
       "type": "array",

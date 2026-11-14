@@ -3,11 +3,12 @@
 **The open-source, cross-platform radial action launcher for your files.**  
 *Inspired by Tangerine. Built with Rust & Tauri v2. 100% customizable.*
 
+[![Release](https://img.shields.io/badge/version-0.0.1--alpha-blue)](https://github.com/cydoniancitizen/bergamotto/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()
 [![Built with Rust](https://img.shields.io/badge/Built%20with-Rust%20%26%20Tauri%20v2-orange)]()
 
-**Bergamotto** opens a radial wheel of customizable actions for your selected files.
+**Bergamotto** (`v0.0.1-alpha`) opens a radial wheel of customizable actions for your selected files.
 
 Unlike traditional radial converters that lock you into a hardcoded list of file format conversions, **Bergamotto has zero hardcoded actions**. Every wedge on the wheel is powered by a user-editable JSON manifest: run CLI tools (`ffmpeg`, `imagemagick`, `pandoc`), trigger custom Python/Bash/PowerShell scripts, upload files to HTTP webhooks, or launch custom workflows.
 
@@ -111,7 +112,7 @@ Every action in Bergamotto lives as a standalone `.json` file inside your OS con
 
 ### Settings & Paths
 
-Open **Settings & Paths** in Action Studio to choose Shift, Ctrl, or Alt for the global hook. The tray and Studio share the toggle, and both the modifier and toggle persist in `settings.json`. On macOS, Alt is Option.
+Open **Settings & Paths** in Action Studio to choose single or dual modifier keys (`Shift`, `Ctrl`, `Alt`, `Alt + Shift`, `Ctrl + Shift`, `Ctrl + Alt`) for the global hook. The tray and Studio share the toggle, and both the modifier and toggle persist in `settings.json`. On macOS, Alt is Option.
 
 For a missing tool, add an absolute executable directory or an override from the manifest's tool name to the absolute executable path. Bergamotto searches custom directories first, then platform defaults (`/opt/homebrew/bin` and `/usr/local/bin` on macOS, `~/.local/bin` on Linux), then `PATH`. Overrides take precedence. Studio checks availability with the same resolver used to launch the action.
 
@@ -170,14 +171,66 @@ With a development build running, this command forwards files to the wheel. It a
 ./target/debug/bergamot --radial-here "/path/to/sample file.txt"
 ```
 
-On macOS, Windows, and X11, hold **Shift** while dragging files to open the wheel under the cursor, then drop on a slice. Release **Shift** to dismiss the wheel mid-drag. Use **Global Shift+Drag Hook** in the tray or Action Studio header to pause or resume detection.
+### OS & Wayland Setup Guide
 
-On Wayland, use `bergamot --radial-here <files...>`. The compositor controls where the wheel appears.
+* **macOS:** Hold `Shift` (or configured modifier) while dragging files in Finder. Bergamotto requires Accessibility / Input Monitoring permissions when prompted to read global drag coordinates.
+* **Windows:** Hold `Shift` while dragging files in File Explorer (`CabinetWClass` / `ExploreWClass`). Bergamotto automatically queries active shell selection using native Windows COM (`IShellWindows`).
+* **Linux (X11):** Hold `Shift` while dragging files in any X11 file manager. Global pointer and modifier polling detects the drag threshold and centers the wheel under your cursor.
+* **Linux (Wayland):** Because Wayland protocols deliberately isolate pointer and keyboard events between windows for security, background drag interception is restricted. Bergamotto provides first-class CLI IPC integration:
+  * Run `bergamot --radial-here <files...>` to open the wheel with your selection.
+  * Run `bergamot --radial-clipboard` to open the wheel with files copied to the clipboard.
+  * **File Manager Integration:**
+    * **GNOME / Nautilus:** Add a Nautilus script in `~/.local/share/nautilus/scripts/Open with Bergamotto`:
+      ```bash
+      #!/bin/bash
+      bergamot --radial-here "$@"
+      ```
+    * **KDE / Dolphin:** Create a Dolphin service menu in `~/.local/share/kio/servicemenus/bergamot.desktop`:
+      ```ini
+      [Desktop Entry]
+      Type=Service
+      MimeType=all/allfiles;
+      Actions=openBergamot;
+      X-KDE-Priority=TopLevel
 
-### Run Core Tests
+      [Desktop Action openBergamot]
+      Name=Open in Bergamotto Wheel
+      Icon=bergamotto
+      Exec=bergamot --radial-here %F
+      ```
+    * **Thunar / Nemo / PCManFM:** Add a custom action executing `bergamot --radial-here %F`.
+  * **Compositor Hotkey (e.g. `Alt + Shift + Space`):**
+    Bind a global shortcut in your compositor (Hyprland, Sway, KDE, GNOME) to trigger Bergamotto with clipboard files:
+    * **Hyprland:** `bind = ALT SHIFT, space, exec, bergamot --radial-clipboard`
+    * **Sway:** `bindsym Mod1+Shift+space exec bergamot --radial-clipboard`
+    * **KDE / GNOME:** Add a custom shortcut bound to `Alt+Shift+Space` running `bergamot --radial-clipboard`.
+
+### CLI Usage
 ```bash
-cargo test --workspace
+# Print version
+bergamot --version    # Outputs: Bergamotto 0.0.1-alpha
+bergamot -V
+
+# Open radial wheel with selected files
+bergamot --radial-here "/path/to/file1.png" "/path/to/file2.png"
+
+# Open radial wheel with clipboard files (ideal for Wayland global hotkeys)
+bergamot --radial-clipboard
 ```
+
+---
+
+## 🗺️ Project Roadmap
+
+- [x] **Milestone 1:** Core Rust Engine (`bergamot-core`), JSON Manifest Schemas, Process/Script/Webhook Execution & Atomic Staging.
+- [x] **Milestone 2:** Tauri v2 Shell, Dynamic SVG Radial Menu, Floating HUD Progress Island, Action Studio CRUD.
+- [x] **Milestone 3:** Global OS Drag Interception (macOS Pasteboard, Windows Explorer COM, Linux X11/Wayland CLI).
+- [x] **Milestone 4:** Action Packs (.bergamot-pack.json import/export), Keychain/Credential Store Integration, Settings & Custom Tool Paths.
+- [x] **Milestone 5:** Versioning (`0.0.1-alpha`), Cross-Platform GitHub Actions CI/CD, Application Icons, and Release Packaging (`.dmg`, `.deb`, `.AppImage`, `.exe`, `.msi`).
+- [x] **Milestone 6:** Visual Wheel Customizer & Guided Action Builder GUI:
+  - Drag-and-drop wedge angle and ordering visualizer.
+  - Guided step-by-step No-Code action builder for CLI tools, scripts, and webhooks.
+  - Live interactive wheel preview inside Action Studio with simulated drop targets.
 
 ---
 

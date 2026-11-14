@@ -1,9 +1,12 @@
+export const APP_VERSION = '0.0.1-alpha';
+
 export type Platform = 'macos' | 'windows' | 'linux';
-export type ModifierKey = 'Shift' | 'Ctrl' | 'Alt';
+export type ModifierKey = 'Shift' | 'Ctrl' | 'Alt' | 'Alt+Shift' | 'Ctrl+Shift' | 'Ctrl+Alt';
 
 export interface AppSettings {
   globalHookEnabled: boolean;
   modifierKey: ModifierKey;
+  globalShortcut: string;
   customPaths: string[];
   toolOverrides: Record<string, string>;
 }
@@ -63,6 +66,8 @@ export interface ActionDescriptor {
   label: string;
   description?: string;
   icon?: string;
+  sortOrder?: number;
+  accentColor?: string;
   enabled: boolean;
   platforms: Platform[];
   matching: MatchingRule;

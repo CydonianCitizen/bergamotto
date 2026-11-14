@@ -14,6 +14,25 @@ pub enum ModifierKey {
     Shift,
     Ctrl,
     Alt,
+    #[serde(rename = "Alt+Shift", alias = "AltShift")]
+    AltShift,
+    #[serde(rename = "Ctrl+Shift", alias = "CtrlShift")]
+    CtrlShift,
+    #[serde(rename = "Ctrl+Alt", alias = "CtrlAlt")]
+    CtrlAlt,
+}
+
+impl std::fmt::Display for ModifierKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Shift => write!(f, "Shift"),
+            Self::Ctrl => write!(f, "Ctrl"),
+            Self::Alt => write!(f, "Alt"),
+            Self::AltShift => write!(f, "Alt+Shift"),
+            Self::CtrlShift => write!(f, "Ctrl+Shift"),
+            Self::CtrlAlt => write!(f, "Ctrl+Alt"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -21,6 +40,7 @@ pub enum ModifierKey {
 pub struct AppSettings {
     pub global_hook_enabled: bool,
     pub modifier_key: ModifierKey,
+    pub global_shortcut: String,
     pub custom_paths: Vec<String>,
     pub tool_overrides: HashMap<String, String>,
 }
@@ -30,6 +50,7 @@ impl Default for AppSettings {
         Self {
             global_hook_enabled: true,
             modifier_key: ModifierKey::Shift,
+            global_shortcut: "Alt+Shift+Space".to_string(),
             custom_paths: Vec::new(),
             tool_overrides: HashMap::new(),
         }

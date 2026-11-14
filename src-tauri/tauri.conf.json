@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Bergamotto",
-  "version": "0.1.0",
-  "identifier": "io.bergamot.desktop",
+  "version": "0.0.1-alpha",
+  "identifier": "io.github.cydoniancitizen.bergamotto",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -33,6 +33,16 @@
   },
   "bundle": {
     "active": true,
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "targets": ["deb", "appimage", "nsis", "msi", "app", "dmg"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "shortDescription": "Radial action launcher for rapid file workflows",
+    "longDescription": "Bergamotto is a cross-platform radial action launcher inspired by Tangerine for rapid, zero-friction file workflows.",
+    "copyright": "Copyright © 2026 Thomas and contributors",
+    "category": "Utility",
+    "windows": {
+      "wix": {
+        "version": "0.0.1"
+      }
+    }
   }
 }

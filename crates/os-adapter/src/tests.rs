@@ -18,6 +18,13 @@ fn changing_modifier_or_enabled_state_invalidates_events_from_previous_configura
     assert!(!control.accepts(ctrl));
     let alt = control.0.load(std::sync::atomic::Ordering::Relaxed);
     assert_eq!(ModifierKey::from_generation(alt), ModifierKey::Alt);
+    assert!(control.configure(true, ModifierKey::AltShift));
+    let alt_shift = control.0.load(std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(
+        ModifierKey::from_generation(alt_shift),
+        ModifierKey::AltShift
+    );
+    assert!(control.enabled());
 }
 
 #[test]

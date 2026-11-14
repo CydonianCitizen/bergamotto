@@ -13,10 +13,81 @@ use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 
 use commands::Actions;
 
+fn clean_file_path(arg: &str, cwd: &Path) -> PathBuf {
+    let clean = arg.strip_prefix("file://").unwrap_or(arg);
+    let path = Path::new(clean);
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    }
+}
+
 fn radial_files(args: impl IntoIterator<Item = String>, cwd: &Path) -> Option<Vec<PathBuf>> {
     let mut arguments = args.into_iter().skip(1);
     arguments.find(|arg| arg == "--radial-here")?;
-    Some(arguments.map(|arg| cwd.join(arg)).collect())
+    Some(arguments.map(|arg| clean_file_path(&arg, cwd)).collect())
+}
+
+fn clipboard_files(app: &AppHandle) -> Option<Vec<PathBuf>> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    let text = app.clipboard().read_text().ok()?;
+    let paths: Vec<PathBuf> = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let clean = line.strip_prefix("file://").unwrap_or(line);
+            PathBuf::from(clean)
+        })
+        .filter(|path| path.exists())
+        .collect();
+    (!paths.is_empty()).then_some(paths)
+}
+
+pub(crate) fn register_shortcut(app: &AppHandle, shortcut_str: &str) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+    let global_shortcut = app.global_shortcut();
+    let _ = global_shortcut.unregister_all();
+
+    let trimmed = shortcut_str.trim();
+    if trimmed.is_empty() {
+        return Ok(());
+    }
+
+    let handle = app.clone();
+    global_shortcut
+        .on_shortcut(trimmed, move |_app, _shortcut, event| {
+            if event.state == ShortcutState::Pressed {
+                let app_main = handle.clone();
+                let _ = handle.run_on_main_thread(move || {
+                    let files = clipboard_files(&app_main).unwrap_or_default();
+                    let file_strings: Vec<String> = files
+                        .iter()
+                        .map(|path| path.to_string_lossy().into_owned())
+                        .collect();
+                    let _ = commands::present_files(
+                        &app_main,
+                        &app_main.state(),
+                        file_strings,
+                        windows::cursor_position(&app_main),
+                        false,
+                    );
+                });
+            }
+        })
+        .map_err(|error| {
+            let msg = error.to_string();
+            if msg.to_lowercase().contains("already")
+                || msg.to_lowercase().contains("conflict")
+                || msg.to_lowercase().contains("in use")
+            {
+                format!("Conflict detected: '{trimmed}' is already in use by the OS or another application.")
+            } else {
+                format!("Failed to register shortcut '{trimmed}': {msg}")
+            }
+        })
 }
 
 fn activate(
@@ -24,24 +95,54 @@ fn activate(
     args: impl IntoIterator<Item = String>,
     cwd: &Path,
 ) -> Result<(), String> {
-    if let Some(paths) = radial_files(args, cwd) {
-        let files: Vec<_> = paths
-            .iter()
-            .map(|path| path.to_string_lossy().into_owned())
-            .collect();
-        commands::present_files(
-            app,
-            &app.state(),
-            files,
-            windows::cursor_position(app),
-            false,
-        )
+    let raw_args: Vec<String> = args.into_iter().collect();
+    let is_clipboard = raw_args.iter().any(|arg| arg == "--radial-clipboard");
+    let is_radial_here = raw_args.iter().any(|arg| arg == "--radial-here");
+
+    let paths = if is_clipboard {
+        clipboard_files(app).unwrap_or_default()
+    } else if is_radial_here {
+        let explicit = radial_files(raw_args, cwd).unwrap_or_default();
+        if explicit.is_empty() {
+            clipboard_files(app).unwrap_or_default()
+        } else {
+            explicit
+        }
     } else {
-        windows::open_studio(app).map_err(|error| error.to_string())
-    }
+        return windows::open_studio(app).map_err(|error| error.to_string());
+    };
+
+    let files: Vec<_> = paths
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    commands::present_files(
+        app,
+        &app.state(),
+        files,
+        windows::cursor_position(app),
+        false,
+    )
 }
 
 pub fn run() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|arg| arg == "--version" || arg == "-V") {
+        println!("Bergamotto {}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        println!("Bergamotto {}", env!("CARGO_PKG_VERSION"));
+        println!("A cross-platform radial action launcher\n");
+        println!("Usage: bergamot [OPTIONS] [FILES...]\n");
+        println!("Options:");
+        println!("  -V, --version            Print version information");
+        println!("  -h, --help               Print help information");
+        println!("  --radial-here <files...> Open radial wheel with specified files");
+        println!("  --radial-clipboard       Open radial wheel with files from clipboard (ideal for Wayland hotkeys)");
+        return;
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             let app = app.clone();
@@ -59,6 +160,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(windows::WheelState::default())
         .manage(os_adapter::MonitorControl::default())
         .manage(jobs::Jobs::default())
@@ -95,6 +197,14 @@ pub fn run() {
 
             windows::create_tray(app.handle())?;
             global_drag::start(app.handle())?;
+            let initial_shortcut = initial.global_shortcut.clone();
+            if !initial_shortcut.is_empty() {
+                if let Err(error) = register_shortcut(app.handle(), &initial_shortcut) {
+                    eprintln!(
+                        "Notice: Could not bind global shortcut '{initial_shortcut}': {error}"
+                    );
+                }
+            }
             let args = std::env::args_os().map(|arg| arg.to_string_lossy().into_owned());
             activate(app.handle(), args, &std::env::current_dir()?)
                 .map_err(std::io::Error::other)?;
@@ -112,6 +222,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::list_actions,
             commands::save_action,
+            commands::reorder_actions,
             commands::create_action,
             commands::delete_action,
             commands::duplicate_action,
@@ -120,6 +231,7 @@ pub fn run() {
             commands::delete_secret,
             commands::get_settings,
             commands::save_settings,
+            commands::test_global_shortcut,
             commands::check_action_dependencies,
             packs::read_action_pack,
             packs::preview_action_pack,
@@ -148,10 +260,20 @@ mod tests {
     #[test]
     fn radial_arguments_preserve_spaces_and_resolve_relative_paths() {
         let cwd = std::env::current_dir().unwrap();
-        let args = ["bergamot", "--radial-here", "a b.txt", "-second.txt"];
+        let args = [
+            "bergamot",
+            "--radial-here",
+            "a b.txt",
+            "-second.txt",
+            "file:///tmp/third.txt",
+        ];
         assert_eq!(
             radial_files(args.map(str::to_owned), &cwd),
-            Some(vec![cwd.join("a b.txt"), cwd.join("-second.txt")])
+            Some(vec![
+                cwd.join("a b.txt"),
+                cwd.join("-second.txt"),
+                PathBuf::from("/tmp/third.txt")
+            ])
         );
         assert_eq!(radial_files(["bergamot".to_owned()], &cwd), None);
     }

@@ -217,8 +217,14 @@ export default function RadialWheel() {
         {actions.map((action, index) => {
           const { path, label: [x, y] } = wedge(index, actions.length);
           const shortLabel = action.label.length > 18 ? `${action.label.slice(0, 16)}…` : action.label;
+          const isHovered = index === hovered;
+          const pathStyle = isHovered && action.accentColor
+            ? { fill: action.accentColor }
+            : action.accentColor
+            ? { stroke: action.accentColor, strokeWidth: 1.5 }
+            : undefined;
           return (
-            <g key={action.id} className={`wheel-wedge ${index === hovered ? 'active' : ''}`}
+            <g key={action.id} className={`wheel-wedge ${isHovered ? 'active' : ''}`}
               role="button" tabIndex={busy || dropRequired ? -1 : 0} aria-label={action.label} aria-disabled={busy || dropRequired}
               onClick={() => { if (!dropRequired) void execute(action, active.files); }}
               onKeyDown={event => {
@@ -228,7 +234,7 @@ export default function RadialWheel() {
                 }
               }}>
               <title>{action.label}</title>
-              <path d={path} />
+              <path d={path} style={pathStyle} />
               <foreignObject x={x - 11} y={y - 19} width={22} height={22} pointerEvents="none">
                 <ActionIcon icon={action.icon} type={action.executor.type} size={22} />
               </foreignObject>
@@ -241,7 +247,7 @@ export default function RadialWheel() {
         onClick={() => { void hideWheel(dragSession).catch(error => setNotice(errorText(error))); }}>
         {active.files.length ? <FileStack size={23} /> : <Upload size={23} />}
         <strong>{active.files.length ? `${active.files.length} ${active.files.length === 1 ? 'file' : 'files'}` : 'Drop files'}</strong>
-        <span>{active.files.length ? (extensions.size > 1 ? 'Mixed types' : [...extensions][0] || 'Selected') : dropRequired ? `Release ${selection.modifierKey} to close` : 'Esc to close'}</span>
+        <span>{active.files.length ? (extensions.size > 1 ? 'Mixed types' : [...extensions][0] || 'Selected') : dropRequired ? `Release ${selection.modifierKey.replace('+', ' + ')} to close` : 'Esc to close'}</span>
       </button>
       <div className="wheel-caption" aria-live="polite">
         {notice ? <span className="wheel-notice">{notice}</span> : pages > 1 ? (

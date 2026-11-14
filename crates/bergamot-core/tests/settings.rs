@@ -9,6 +9,7 @@ fn settings_round_trip_and_failed_updates_keep_previous_values() {
     let custom = AppSettings {
         global_hook_enabled: false,
         modifier_key: ModifierKey::Alt,
+        global_shortcut: "Ctrl+Alt+B".into(),
         custom_paths: vec![temp.path().to_string_lossy().into_owned()],
         tool_overrides: [(
             "example-tool".into(),
@@ -25,9 +26,20 @@ fn settings_round_trip_and_failed_updates_keep_previous_values() {
         .is_err());
     assert_eq!(settings.snapshot(), custom);
     assert_eq!(SettingsStore::open(&file).unwrap().snapshot(), custom);
-    let json = std::fs::read_to_string(file).unwrap();
+    let json = std::fs::read_to_string(&file).unwrap();
     assert!(json.contains("\"globalHookEnabled\": false"));
     assert!(json.contains("\"modifierKey\": \"Alt\""));
+
+    // Test two-key modifiers like Alt+Shift
+    settings
+        .update(|settings| settings.modifier_key = ModifierKey::AltShift)
+        .unwrap();
+    let json_dual = std::fs::read_to_string(&file).unwrap();
+    assert!(json_dual.contains("\"modifierKey\": \"Alt+Shift\""));
+    assert_eq!(
+        SettingsStore::open(&file).unwrap().snapshot().modifier_key,
+        ModifierKey::AltShift
+    );
 }
 
 #[test]

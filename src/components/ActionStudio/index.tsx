@@ -1,24 +1,44 @@
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Aperture, Braces, Check, CircleAlert, Copy, FolderOpen, Layers3, Package, Play, Plus, Save, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
+import {
+  Aperture,
+  Braces,
+  Check,
+  CircleAlert,
+  Copy,
+  FolderOpen,
+  Layers3,
+  Package,
+  Play,
+  Plus,
+  Save,
+  SlidersHorizontal,
+  Sparkles,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { errorText, ipc } from '../../ipc';
-import type { ActionDescriptor, AppSettings, ToolStatus } from '../../types/actions';
+import { APP_VERSION, type ActionDescriptor, type AppSettings, type ToolStatus } from '../../types/actions';
 import { ActionIcon } from '../ActionIcon';
-import { formatManifest, inspectManifest, newAction, validateManifest } from './manifest';
-import VisualEditor from './VisualEditor';
-import SettingsPanel from './SettingsPanel';
 import ActionPacks from './ActionPacks';
+import { GuidedWizard } from './GuidedWizard';
+import { formatManifest, inspectManifest, newAction, validateManifest } from './manifest';
+import SettingsPanel from './SettingsPanel';
+import VisualEditor from './VisualEditor';
+import { WheelCustomizer } from './WheelCustomizer';
 
-type Tab = 'visual' | 'json';
+type Tab = 'guided' | 'visual' | 'json';
+type ViewMode = 'editor' | 'wheel';
 
 export default function ActionStudio() {
   const [actions, setActions] = useState<ActionDescriptor[]>([]);
   const [saved, setSaved] = useState<ActionDescriptor | null>(null);
   const [draft, setDraft] = useState<ActionDescriptor | null>(null);
   const [raw, setRaw] = useState('');
-  const [tab, setTab] = useState<Tab>('visual');
+  const [tab, setTab] = useState<Tab>('guided');
+  const [viewMode, setViewMode] = useState<ViewMode>('editor');
   const [editorVersion, setEditorVersion] = useState(0);
   const [fieldError, setFieldError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,7 +77,7 @@ export default function ActionStudio() {
     setSaved(existing ? action : null);
     setDraft(action);
     setRaw(formatManifest(action));
-    setTab('visual');
+    setTab(existing ? 'visual' : 'guided');
     setFieldError('');
     setEditorVersion(version => version + 1);
     setNotice(null);
@@ -98,27 +118,23 @@ export default function ActionStudio() {
 
   useEffect(() => {
     if (!draft && actions[0]) select(actions[0]);
-    else if (conflict && !dirty) {
-      if (current) select(current);
-      else {
-        setSaved(null);
-        setDraft(null);
-      }
-    }
-  }, [actions, conflict, current, dirty, draft]);
+  }, [actions]);
 
   function changeTab(next: Tab) {
-    if (next === tab || !draft) return;
-    if (next === 'json') setRaw(formatManifest(draft));
-    else if (json?.action) setDraft(json.action);
+    if (next === 'json' && draft) {
+      setRaw(formatManifest(draft));
+    } else if ((next === 'visual' || next === 'guided') && tab === 'json' && json?.action) {
+      setDraft(json.action);
+      setRaw(formatManifest(json.action));
+    }
     setTab(next);
   }
 
-  async function task(operation: () => Promise<void>) {
+  async function task<T>(operation: () => Promise<T>): Promise<T | undefined> {
     setBusy(true);
     setNotice(null);
     try {
-      await operation();
+      return await operation();
     } catch (error) {
       report(error);
     } finally {
@@ -191,10 +207,31 @@ export default function ActionStudio() {
   return (
     <main className="studio">
       <header className="studio-header">
-        <div className="brand"><span className="brand-mark"><Aperture size={25} strokeWidth={1.7} /></span><span>Bergamotto</span></div>
+        <div className="brand">
+          <span className="brand-mark"><Aperture size={25} strokeWidth={1.7} /></span>
+          <span>Bergamotto</span>
+          <span className="version-badge">v{APP_VERSION}</span>
+        </div>
         <div className="top-actions">
-          <button className="button secondary" type="button" role="switch" aria-label={`Global ${settings?.modifierKey ?? 'Shift'}+Drag Hook`}
-            aria-checked={settings?.globalHookEnabled ?? false} disabled={!settings} onClick={() => void ipc.toggleGlobalDrag().catch(report)}>
+          <button
+            className={`button ${viewMode === 'wheel' ? 'accent' : 'secondary'}`}
+            type="button"
+            aria-label="Wheel Customizer"
+            title="Interactive Visual Wheel Customizer"
+            onClick={() => setViewMode(v => v === 'wheel' ? 'editor' : 'wheel')}
+          >
+            <Aperture size={16} />
+            <span className="header-action-label">{viewMode === 'wheel' ? 'Action Editor' : 'Wheel Customizer'}</span>
+          </button>
+          <button
+            className="button secondary"
+            type="button"
+            role="switch"
+            aria-label={`Global ${settings?.modifierKey ?? 'Shift'}+Drag Hook`}
+            aria-checked={settings?.globalHookEnabled ?? false}
+            disabled={!settings}
+            onClick={() => void ipc.toggleGlobalDrag().catch(report)}
+          >
             Global {settings?.modifierKey ?? 'Shift'}+Drag Hook{settings ? settings.globalHookEnabled ? ': Enabled' : ': Disabled' : ''}
           </button>
           <button className="icon-button" type="button" aria-label="Settings & Paths" title="Settings & Paths" disabled={!settings} onClick={() => setShowSettings(true)}><SlidersHorizontal size={16} /></button>
@@ -203,94 +240,283 @@ export default function ActionStudio() {
           <button className="button accent" aria-label="Test on Wheel" title="Test on Wheel" onClick={() => void task(testOnWheel)} disabled={busy}><Play size={15} /><span className="header-action-label">Test on Wheel</span></button>
         </div>
       </header>
-      <div className="studio-layout">
-        <aside className="sidebar" aria-label="Actions">
-          <div className="sidebar-heading"><div><h2>Actions</h2><p>{actions.length} total · {enabled} enabled</p></div>
-            <button type="button" aria-label="New action" title="New action" className="icon-button add-action" disabled={busy} onClick={() => select(newAction(), false)}><Plus size={20} /></button>
-          </div>
-          <nav className="action-list" aria-label="Action library">
-            {!savedId && draft && <div className="action-row selected"><span className="list-icon"><Plus size={17} /></span><span className="row-copy"><strong>New action</strong><small>Unsaved</small></span></div>}
-            {actions.map(action => <button key={action.id} type="button" className={`action-row ${savedId === action.id ? 'selected' : ''}`}
-              aria-current={savedId === action.id ? 'true' : undefined} disabled={busy} onClick={() => select(action)}>
-              <span className="list-icon"><ActionIcon icon={action.icon} type={action.executor.type} /></span>
-              <span className="row-copy"><strong>{action.label}</strong><small>{action.executor.type}
-                {dependencies[action.id] && <span className={dependencies[action.id].path ? 'tool-detected' : 'tool-missing'}
-                  title={dependencies[action.id].path ?? dependencies[action.id].message ?? undefined}>
-                  {' · '}{dependencies[action.id].tool} {dependencies[action.id].path ? 'found' : 'missing'}
-                </span>}
-              </small></span>
-              <span className={`enabled-dot ${action.enabled ? 'on' : ''}`} aria-label={action.enabled ? 'Enabled' : 'Disabled'} />
-            </button>)}
-            {!actions.length && !draft && <p className="sidebar-empty">{loading ? 'Loading actions…' : 'No saved actions'}</p>}
-          </nav>
-          <div className={`drop-target ${dragging ? 'dragging' : ''}`}><Upload size={17} />
-            <div><strong>Drop sample files</strong><span>Open the radial wheel with your selection.</span></div>
-          </div>
-        </aside>
-        <section className="editor" aria-label="Action editor">
-          <div className="editor-header">
-            <div className="editor-heading">
-              <div><h1>Action Studio</h1><p>Configure the actions on your radial wheel.</p></div>
-              {visibleAction && <button className="enabled-switch" type="button" role="switch" aria-checked={visibleAction.enabled}
-                disabled={busy || conflict || (tab === 'json' && !candidate)} aria-label="Action enabled" onClick={() => void task(toggle)}>
-                <span className={visibleAction.enabled ? 'on' : ''} />{visibleAction.enabled ? 'Enabled' : 'Disabled'}
-              </button>}
+
+      {viewMode === 'wheel' ? (
+        <WheelCustomizer
+          actions={actions}
+          selectedAction={current ?? draft}
+          onSelectAction={action => select(action)}
+          onEditAction={action => {
+            select(action);
+            setViewMode('editor');
+          }}
+          onAddSlice={presetExts => {
+            select(newAction(presetExts), false);
+            setTab('guided');
+            setViewMode('editor');
+          }}
+          onReorder={async orderedIds => {
+            await ipc.reorderActions(orderedIds);
+            await refresh();
+          }}
+        />
+      ) : (
+        <div className="studio-layout">
+          <aside className="sidebar" aria-label="Actions">
+            <div className="sidebar-heading">
+              <div>
+                <h2>Actions</h2>
+                <p>{actions.length} total · {enabled} enabled</p>
+              </div>
+              <button
+                type="button"
+                aria-label="New action"
+                title="New action"
+                className="icon-button add-action"
+                disabled={busy}
+                onClick={() => select(newAction(), false)}
+              >
+                <Plus size={20} />
+              </button>
             </div>
-            {draft && <div className="tab-bar">
-              <div className="tabs" aria-label="Editor mode">
-                <button type="button" className={tab === 'visual' ? 'selected' : ''} aria-pressed={tab === 'visual'}
-                  disabled={busy || (tab === 'json' && !canShowVisual)} onClick={() => changeTab('visual')}><SlidersHorizontal size={16} /> Visual editor</button>
-                <button type="button" className={tab === 'json' ? 'selected' : ''} aria-pressed={tab === 'json'} disabled={busy || Boolean(fieldError)} onClick={() => changeTab('json')}><Braces size={16} /> JSON Inspector</button>
+            <nav className="action-list" aria-label="Action library">
+              {!savedId && draft && (
+                <div className="action-row selected">
+                  <span className="list-icon"><Plus size={17} /></span>
+                  <span className="row-copy"><strong>New action</strong><small>Unsaved</small></span>
+                </div>
+              )}
+              {actions.map(action => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className={`action-row ${savedId === action.id ? 'selected' : ''}`}
+                  aria-current={savedId === action.id ? 'true' : undefined}
+                  disabled={busy}
+                  onClick={() => select(action)}
+                >
+                  <span
+                    className="list-icon"
+                    style={action.accentColor ? { borderLeft: `3px solid ${action.accentColor}` } : undefined}
+                  >
+                    <ActionIcon icon={action.icon} type={action.executor.type} />
+                  </span>
+                  <span className="row-copy">
+                    <strong>{action.label}</strong>
+                    <small>
+                      {action.executor.type}
+                      {dependencies[action.id] && (
+                        <span
+                          className={dependencies[action.id].path ? 'tool-detected' : 'tool-missing'}
+                          title={dependencies[action.id].path ?? dependencies[action.id].message ?? undefined}
+                        >
+                          {' · '}{dependencies[action.id].tool} {dependencies[action.id].path ? 'found' : 'missing'}
+                        </span>
+                      )}
+                    </small>
+                  </span>
+                  <span className={`enabled-dot ${action.enabled ? 'on' : ''}`} aria-label={action.enabled ? 'Enabled' : 'Disabled'} />
+                </button>
+              ))}
+              {!actions.length && !draft && <p className="sidebar-empty">{loading ? 'Loading actions…' : 'No saved actions'}</p>}
+            </nav>
+            <div className={`drop-target ${dragging ? 'dragging' : ''}`}>
+              <Upload size={17} />
+              <div><strong>Drop sample files</strong><span>Open the radial wheel with your selection.</span></div>
+            </div>
+          </aside>
+
+          <section className="editor" aria-label="Action editor">
+            <div className="editor-header">
+              <div className="editor-heading">
+                <div>
+                  <h1>Action Studio</h1>
+                  <p>Configure the actions on your radial wheel.</p>
+                </div>
+                {visibleAction && (
+                  <button
+                    className="enabled-switch"
+                    type="button"
+                    role="switch"
+                    aria-checked={visibleAction.enabled}
+                    disabled={busy || conflict || (tab === 'json' && !candidate)}
+                    aria-label="Action enabled"
+                    onClick={() => void task(toggle)}
+                  >
+                    <span className={visibleAction.enabled ? 'on' : ''} />
+                    {visibleAction.enabled ? 'Enabled' : 'Disabled'}
+                  </button>
+                )}
               </div>
-              <div className="editor-tools">
-                <button type="button" className="icon-button" aria-label="Duplicate saved action" title="Duplicate saved action" disabled={!saved || busy || dirty} onClick={() => void task(duplicate)}><Copy size={17} /></button>
-                <button type="button" className="icon-button danger" aria-label="Delete action" title="Delete action" disabled={!saved || busy || conflict} onClick={() => setConfirmDelete(true)}><Trash2 size={17} /></button>
-              </div>
-            </div>}
-          </div>
-          <div className="editor-content" ref={scrollArea}>
-            {conflict && <div className="editor-alert" role="alert"><CircleAlert size={17} /><span>The saved manifest changed on disk.</span>
-              <button className="button secondary" onClick={() => current ? select(current) : select(draft!, false)}>Reload</button>
-            </div>}
-            {draft ? (
-              tab === 'visual' ? <fieldset className="editor-form" disabled={busy}>
-                <VisualEditor key={editorVersion} action={draft} isNew={!saved} onFieldError={setFieldError} update={setDraft} />
-              </fieldset> : <div className="json-editor">
-                <label className="field"><span>Action manifest</span>
-                  <textarea className="mono" spellCheck={false} disabled={busy} value={raw} onChange={event => setRaw(event.target.value)} />
-                </label>
-                <div aria-live="polite" className={`schema-status ${blocked ? 'invalid' : ''}`}>
-                  {blocked ? <CircleAlert size={16} /> : <Check size={16} />}
-                  <div>{idChanged && <p>Keep the saved action ID to update this manifest.</p>}
-                    {issues.length ? issues.map(issue => <p key={issue}>{issue}</p>) : !blocked ? <p>Manifest is valid</p> : null}
+
+              {draft && (
+                <div className="tab-bar">
+                  <div className="tabs" aria-label="Editor mode">
+                    <button
+                      type="button"
+                      className={tab === 'guided' ? 'selected' : ''}
+                      aria-pressed={tab === 'guided'}
+                      disabled={busy || (tab === 'json' && !canShowVisual)}
+                      onClick={() => changeTab('guided')}
+                    >
+                      <Sparkles size={15} /> Guided Mode
+                    </button>
+                    <button
+                      type="button"
+                      className={tab === 'visual' ? 'selected' : ''}
+                      aria-pressed={tab === 'visual'}
+                      disabled={busy || (tab === 'json' && !canShowVisual)}
+                      onClick={() => changeTab('visual')}
+                    >
+                      <SlidersHorizontal size={15} /> Advanced Form
+                    </button>
+                    <button
+                      type="button"
+                      className={tab === 'json' ? 'selected' : ''}
+                      aria-pressed={tab === 'json'}
+                      disabled={busy || Boolean(fieldError)}
+                      onClick={() => changeTab('json')}
+                    >
+                      <Braces size={15} /> JSON Inspector
+                    </button>
+                  </div>
+                  <div className="editor-tools">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label="Duplicate saved action"
+                      title="Duplicate saved action"
+                      disabled={!saved || busy || dirty}
+                      onClick={() => void task(duplicate)}
+                    >
+                      <Copy size={17} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button danger"
+                      aria-label="Delete action"
+                      title="Delete action"
+                      disabled={!saved || busy || conflict}
+                      onClick={() => setConfirmDelete(true)}
+                    >
+                      <Trash2 size={17} />
+                    </button>
                   </div>
                 </div>
-              </div>
-            ) : <div className="studio-empty"><Layers3 size={30} /><h2>{loading ? 'Loading actions…' : 'Create your first action'}</h2>
-              {!loading && <button className="button accent" onClick={() => select(newAction(), false)}><Plus size={17} /> New action</button>}
-            </div>}
-          </div>
-          <footer className="editor-footer">
-            <div className={`save-status ${notice?.error || (dirty && blocked) ? 'invalid' : ''}`} aria-live="polite">
-              {notice ? notice.message : fieldError || (dirty && tab === 'visual' && issues.length ? issues[0] : dirty ? 'Unsaved changes' : draft ? 'All changes saved' : '')}
+              )}
             </div>
-            {draft && <div className="footer-buttons">
-              {dirty && <button type="button" className="button secondary" disabled={busy} onClick={() => saved ? select(current ?? saved) : setDraft(null)}>Discard changes</button>}
-              <button type="button" className="button accent" disabled={!dirty || busy || blocked} onClick={() => void task(save)}><Save size={16} /> Save action</button>
-            </div>}
-          </footer>
-        </section>
-      </div>
+
+            <div className="editor-content" ref={scrollArea}>
+              {conflict && (
+                <div className="editor-alert" role="alert">
+                  <CircleAlert size={17} />
+                  <span>The saved manifest changed on disk.</span>
+                  <button className="button secondary" onClick={() => (current ? select(current) : select(draft!, false))}>
+                    Reload
+                  </button>
+                </div>
+              )}
+
+              {draft ? (
+                tab === 'guided' ? (
+                  <fieldset className="editor-form" disabled={busy}>
+                    <GuidedWizard action={draft} update={setDraft} />
+                  </fieldset>
+                ) : tab === 'visual' ? (
+                  <fieldset className="editor-form" disabled={busy}>
+                    <VisualEditor
+                      key={editorVersion}
+                      action={draft}
+                      isNew={!saved}
+                      onFieldError={setFieldError}
+                      update={setDraft}
+                      toolStatus={dependencies[draft.id]}
+                    />
+                  </fieldset>
+                ) : (
+                  <div className="json-editor">
+                    <label className="field">
+                      <span>Action manifest</span>
+                      <textarea
+                        className="mono"
+                        spellCheck={false}
+                        disabled={busy}
+                        value={raw}
+                        onChange={event => setRaw(event.target.value)}
+                      />
+                    </label>
+                    <div aria-live="polite" className={`schema-status ${blocked ? 'invalid' : ''}`}>
+                      {blocked ? <CircleAlert size={16} /> : <Check size={16} />}
+                      <div>
+                        {idChanged && <p>Keep the saved action ID to update this manifest.</p>}
+                        {issues.length ? issues.map(issue => <p key={issue}>{issue}</p>) : !blocked ? <p>Manifest is valid</p> : null}
+                      </div>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="studio-empty">
+                  <Layers3 size={30} />
+                  <h2>{loading ? 'Loading actions…' : 'Create your first action'}</h2>
+                  {!loading && (
+                    <button className="button accent" onClick={() => select(newAction(), false)}>
+                      <Plus size={17} /> New action
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <footer className="editor-footer">
+              <div className="footer-left">
+                <span className="version-badge">v{APP_VERSION}</span>
+                <div className={`save-status ${notice?.error || (dirty && blocked) ? 'invalid' : ''}`} aria-live="polite">
+                  {notice
+                    ? notice.message
+                    : fieldError || (dirty && (tab === 'visual' || tab === 'guided') && issues.length ? issues[0] : dirty ? 'Unsaved changes' : draft ? 'All changes saved' : '')}
+                </div>
+              </div>
+              {draft && (
+                <div className="footer-buttons">
+                  {dirty && (
+                    <button
+                      type="button"
+                      className="button secondary"
+                      disabled={busy}
+                      onClick={() => (saved ? select(current ?? saved) : setDraft(null))}
+                    >
+                      Discard changes
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="button accent"
+                    disabled={!dirty || busy || blocked}
+                    onClick={() => void task(save)}
+                  >
+                    <Save size={16} /> Save action
+                  </button>
+                </div>
+              )}
+            </footer>
+          </section>
+        </div>
+      )}
+
       {showSettings && settings && <SettingsPanel settings={settings} close={() => setShowSettings(false)} />}
       {showPacks && <ActionPacks selected={current} hasEnabled={enabled > 0} onImport={showImported} close={() => setShowPacks(false)} />}
-      {confirmDelete && <div className="dialog-backdrop" onKeyDown={event => { if (event.key === 'Escape') setConfirmDelete(false); }}>
-        <section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
-          <h2 id="delete-title">Delete action?</h2>
-          <p>The manifest for {saved?.label} will be removed from your actions folder.</p>
-          <div><button autoFocus className="button secondary" onClick={() => setConfirmDelete(false)}>Keep action</button>
-            <button className="button destructive" disabled={busy} onClick={() => void task(remove)}><Trash2 size={16} /> Delete action</button></div>
-        </section>
-      </div>}
+      {confirmDelete && (
+        <div className="dialog-backdrop" onKeyDown={event => { if (event.key === 'Escape') setConfirmDelete(false); }}>
+          <section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
+            <h2 id="delete-title">Delete action?</h2>
+            <p>The manifest for {saved?.label} will be removed from your actions folder.</p>
+            <div>
+              <button autoFocus className="button secondary" onClick={() => setConfirmDelete(false)}>Keep action</button>
+              <button className="button destructive" disabled={busy} onClick={() => void task(remove)}><Trash2 size={16} /> Delete action</button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

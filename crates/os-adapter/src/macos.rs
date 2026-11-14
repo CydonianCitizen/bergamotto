@@ -45,11 +45,21 @@ impl NativePoller for Poller {
         Ok(autoreleasepool(|_| {
             let at = Instant::now();
             let button_down = NSEvent::pressedMouseButtons() & LEFT_MOUSE_BUTTON != 0;
-            let modifier_down = NSEvent::modifierFlags_class().contains(match modifier {
-                ModifierKey::Shift => NSEventModifierFlags::Shift,
-                ModifierKey::Ctrl => NSEventModifierFlags::Control,
-                ModifierKey::Alt => NSEventModifierFlags::Option,
-            });
+            let flags = NSEvent::modifierFlags_class();
+            let modifier_down = match modifier {
+                ModifierKey::Shift => flags.contains(NSEventModifierFlags::Shift),
+                ModifierKey::Ctrl => flags.contains(NSEventModifierFlags::Control),
+                ModifierKey::Alt => flags.contains(NSEventModifierFlags::Option),
+                ModifierKey::AltShift => {
+                    flags.contains(NSEventModifierFlags::Option | NSEventModifierFlags::Shift)
+                }
+                ModifierKey::CtrlShift => {
+                    flags.contains(NSEventModifierFlags::Control | NSEventModifierFlags::Shift)
+                }
+                ModifierKey::CtrlAlt => {
+                    flags.contains(NSEventModifierFlags::Control | NSEventModifierFlags::Option)
+                }
+            };
             let (x, y) = cursor_position();
             if !button_down {
                 // The shared pasteboard can retain the previous drag's contents after mouse-up.
