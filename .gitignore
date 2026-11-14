@@ -1,0 +1,52 @@
+# --- Rust / Cargo ---
+/target/
+**/target/
+**/*.rs.bk
+*.pdb
+# NOTA: NON ignoriamo Cargo.lock perché questa è un'applicazione (binario)
+
+# --- Node / Frontend (React + Vite) ---
+node_modules/
+/dist/
+/dist-ssr/
+*.local
+.npm
+.eslintcache
+*.tsbuildinfo
+
+# --- Tauri v2 ---
+src-tauri/target/
+src-tauri/gen/schemas/
+src-tauri/WixTools/
+*.msi
+*.exe
+*.dmg
+*.app
+*.AppImage
+*.deb
+*.rpm
+
+# --- Bergamotto Test & Staging Artifacts ---
+.bergamot-tmp-*
+**/.bergamot-tmp-*
+
+# --- Environment & Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- OS & Editor ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Agents Stuff ---
+AGENTS.md
+.codex/
