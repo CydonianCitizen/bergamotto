@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "starter.ffmpeg-compress",
+  "label": "Compress video to MP4",
+  "description": "Requires FFmpeg on PATH. Compresses video using H.264.",
+  "icon": "film",
+  "enabled": true,
+  "platforms": ["macos", "windows", "linux"],
+  "matching": { "extensions": ["mp4", "mov", "mkv"], "cardinality": "each" },
+  "executor": {
+    "type": "process",
+    "program": "ffmpeg",
+    "args": ["-nostdin", "-y", "-i", "${input}", "-c:v", "libx264", "-crf", "28", "${output}"],
+    "timeoutSeconds": 600
+  },
+  "output": { "mode": "file", "extension": "mp4", "suffix": "-compressed", "overwriteOriginal": false }
+}

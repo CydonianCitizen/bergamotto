@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "test.text-files",
+  "label": "Process text files",
+  "enabled": true,
+  "platforms": ["macos", "windows", "linux"],
+  "matching": { "extensions": ["txt", "md"], "cardinality": "batch" },
+  "executor": { "type": "process", "program": "example-tool", "args": ["${inputs}"] },
+  "output": { "mode": "stdout" }
+}

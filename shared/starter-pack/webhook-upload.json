@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "starter.webhook-upload",
+  "label": "Upload to webhook",
+  "description": "Set your endpoint before enabling this template.",
+  "icon": "upload-cloud",
+  "enabled": false,
+  "platforms": ["macos", "windows", "linux"],
+  "matching": { "extensions": ["*"], "cardinality": "batch" },
+  "executor": {
+    "type": "webhook",
+    "method": "POST",
+    "url": "https://example.com/upload",
+    "fileFieldName": "file",
+    "timeoutSeconds": 120
+  },
+  "output": { "mode": "stdout" }
+}

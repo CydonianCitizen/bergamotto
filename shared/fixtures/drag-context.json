@@ -1,0 +1,4 @@
+{
+  "platform": "linux",
+  "files": ["notes.TXT", "readme.md"]
+}

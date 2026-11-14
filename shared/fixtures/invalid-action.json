@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "id": "test.invalid",
+  "label": "Invalid action",
+  "enabled": true,
+  "platforms": ["linux"],
+  "matching": { "extensions": ["TXT", "*"], "cardinality": "single" },
+  "executor": { "type": "script", "interpreter": "python", "scriptBody": "print(1)", "scriptPath": "script.py" },
+  "output": { "mode": "none" }
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "starter.imagemagick-convert",
+  "label": "Convert image to PNG",
+  "description": "Requires ImageMagick on PATH. Writes a PNG beside each selected image.",
+  "icon": "image",
+  "enabled": true,
+  "platforms": ["macos", "windows", "linux"],
+  "matching": { "extensions": ["jpg", "jpeg", "webp", "bmp"], "cardinality": "each" },
+  "executor": { "type": "process", "program": "magick", "args": ["${input}", "${output}"] },
+  "output": { "mode": "file", "extension": "png", "overwriteOriginal": false }
+}
