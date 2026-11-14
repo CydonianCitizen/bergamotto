@@ -181,8 +181,9 @@ impl WebhookExecutor {
                 .map_err(|_| ExecutionError::InvalidConfig("invalid webhook header name".into()))?;
             let uses_secret = value.contains(SECRET_PLACEHOLDER);
             let interpolated = value.replace(SECRET_PLACEHOLDER, &secret);
-            let mut value = HeaderValue::from_str(&interpolated)
-                .map_err(|_| ExecutionError::InvalidConfig("invalid webhook header value".into()))?;
+            let mut value = HeaderValue::from_str(&interpolated).map_err(|_| {
+                ExecutionError::InvalidConfig("invalid webhook header value".into())
+            })?;
             value.set_sensitive(uses_secret || name == AUTHORIZATION);
             request = request.header(name, value);
         }
@@ -237,9 +238,9 @@ async fn file_part(path: &Path) -> Result<Part, ExecutionError> {
         ));
     }
 
-    let name = path.file_name().ok_or_else(|| {
-        ExecutionError::InvalidConfig("webhook input has no filename".into())
-    })?;
+    let name = path
+        .file_name()
+        .ok_or_else(|| ExecutionError::InvalidConfig("webhook input has no filename".into()))?;
     let file = File::open(path).await?;
     let length = file.metadata().await?.len();
     let body = reqwest::Body::wrap_stream(ReaderStream::new(file));

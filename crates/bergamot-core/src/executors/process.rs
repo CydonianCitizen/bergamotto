@@ -33,10 +33,7 @@ pub async fn execute(
         return Err(ExecutionError::Cancelled);
     }
 
-    let inputs = files
-        .iter()
-        .map(absolute)
-        .collect::<io::Result<Vec<_>>>()?;
+    let inputs = files.iter().map(absolute).collect::<io::Result<Vec<_>>>()?;
     let output = output.map(absolute).transpose()?;
     let default_work_dir = inputs[0].parent().ok_or_else(|| {
         ExecutionError::InvalidConfig("the first input has no parent directory".to_owned())
@@ -52,12 +49,9 @@ pub async fn execute(
         } => {
             reject_windows_batch_file(program)?;
             let work_dir = match working_directory {
-                Some(path) => resolve_working_directory(
-                    path,
-                    &inputs,
-                    output.as_deref(),
-                    default_work_dir,
-                )?,
+                Some(path) => {
+                    resolve_working_directory(path, &inputs, output.as_deref(), default_work_dir)?
+                }
                 None => default_work_dir.to_path_buf(),
             };
 
@@ -237,7 +231,10 @@ fn expand_argument(
     work_dir: &Path,
 ) -> Result<Vec<OsString>, ExecutionError> {
     if template == "${inputs}" {
-        return Ok(inputs.iter().map(|path| path.as_os_str().to_owned()).collect());
+        return Ok(inputs
+            .iter()
+            .map(|path| path.as_os_str().to_owned())
+            .collect());
     }
     if template.contains("${inputs}") {
         return Err(ExecutionError::InvalidConfig(
@@ -260,10 +257,7 @@ fn expand_argument(
         let placeholder = &after_open[..end];
         let value: &OsStr = match placeholder {
             "input" => input.as_os_str(),
-            "input_dir" => input
-                .parent()
-                .unwrap_or_else(|| Path::new("."))
-                .as_os_str(),
+            "input_dir" => input.parent().unwrap_or_else(|| Path::new(".")).as_os_str(),
             "input_stem" => input.file_stem().unwrap_or_else(|| OsStr::new("")),
             "input_ext" => input.extension().unwrap_or_else(|| OsStr::new("")),
             "output" => output

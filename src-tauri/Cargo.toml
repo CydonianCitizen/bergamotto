@@ -1,0 +1,24 @@
+[package]
+name = "bergamot"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[build-dependencies]
+tauri-build = "2"
+
+[dependencies]
+bergamot-core = { path = "../crates/bergamot-core" }
+directories = "6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+tokio = { version = "1", features = ["sync", "time"] }
+uuid = { version = "1", features = ["v4"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

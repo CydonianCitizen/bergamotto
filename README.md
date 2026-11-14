@@ -7,7 +7,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()
 [![Built with Rust](https://img.shields.io/badge/Built%20with-Rust%20%26%20Tauri%20v2-orange)]()
 
-**Bergamotto** brings a fast, non-intrusive radial wheel right under your cursor whenever you drag a file while holding `Shift`. 
+**Bergamotto** opens a radial wheel of customizable actions for your selected files.
 
 Unlike traditional radial converters that lock you into a hardcoded list of file format conversions, **Bergamotto has zero hardcoded actions**. Every wedge on the wheel is powered by a user-editable JSON manifest: run CLI tools (`ffmpeg`, `imagemagick`, `pandoc`), trigger custom Python/Bash/PowerShell scripts, upload files to HTTP webhooks, or launch custom workflows.
 
@@ -31,10 +31,9 @@ Unlike traditional radial converters that lock you into a hardcoded list of file
 
 ## 🚀 How It Works
 
-1. **Grab any file(s)** in Finder, Windows Explorer, or your Linux file manager.
-2. **Hold `Shift`** while dragging (or trigger via customizable shortcut).
-3. **Drop onto a slice** of the radial wheel that appears under your cursor.
-4. Watch real-time progress in the floating HUD island.
+1. **Select files** with **Test on Wheel** in Action Studio, drop them into Studio, or pass them to `bergamot --radial-here`.
+2. **Choose a slice** to run its action. With an empty wheel open from the tray, you can drag files directly onto a slice.
+3. Follow progress in the floating HUD.
 
 ---
 
@@ -129,7 +128,7 @@ Bergamotto
 
 ### Prerequisites
 * Rust (stable toolchain)
-* Node.js (v20+)
+* Node.js (20.19+ or 22.13+)
 * Platform-specific Tauri v2 dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
 
 ### Development
@@ -139,6 +138,16 @@ cd bergamotto
 npm install
 npm run tauri dev
 ```
+
+Open **Test on Wheel** in Action Studio to choose sample files, or drop files onto the Studio window. The tray's **Test Radial Wheel** item opens an empty wheel for a file drop.
+
+With a development build running, this command forwards files to the wheel. It also works on first launch.
+
+```bash
+./target/debug/bergamot --radial-here "/path/to/sample file.txt"
+```
+
+Global Shift+Drag interception is planned for Milestone 3. Native Wayland compositors control top-level window placement, so overlay positioning depends on the compositor.
 
 ### Run Core Tests
 ```bash

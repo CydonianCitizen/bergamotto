@@ -45,12 +45,18 @@ fn schema_rejects_invalid_variants_and_unsafe_names() {
         ("/id", json!("../escape")),
         ("/matching/extensions", json!(["TXT"])),
         ("/matching/extensions", json!(["txt", "*"])),
-        ("/executor", json!({"type": "script", "interpreter": "python"})),
+        (
+            "/executor",
+            json!({"type": "script", "interpreter": "python"}),
+        ),
         (
             "/executor",
             json!({"type": "script", "interpreter": "python", "scriptBody": "print(1)", "scriptPath": "script.py"}),
         ),
-        ("/executor", json!({"type": "process", "program": "tool", "timeoutSeconds": 0})),
+        (
+            "/executor",
+            json!({"type": "process", "program": "tool", "timeoutSeconds": 0}),
+        ),
         ("/output", json!({"mode": "file", "suffix": "/escape"})),
         ("/output", json!({"mode": "file", "extension": "../escape"})),
     ] {
@@ -101,7 +107,27 @@ fn registry_persists_crud_and_does_not_restore_deleted_starters() {
         registry.delete_action(&action.id).unwrap();
     }
     drop(registry);
-    assert!(ActionRegistry::open(&path).unwrap().list_actions().is_empty());
+    assert!(ActionRegistry::open(&path)
+        .unwrap()
+        .list_actions()
+        .is_empty());
+}
+
+#[test]
+fn reload_handler_sees_external_manifest_changes() {
+    let temp = tempdir().unwrap();
+    let (updated, changes) = std::sync::mpsc::channel();
+    let registry = ActionRegistry::open_with_reload_handler(temp.path(), move || {
+        let _ = updated.send(());
+    })
+    .unwrap();
+
+    let source = temp.path().join("external.tmp");
+    fs::write(&source, VALID).unwrap();
+    assert!(changes.recv_timeout(Duration::from_millis(100)).is_err());
+    fs::rename(source, temp.path().join("external.json")).unwrap();
+    changes.recv_timeout(Duration::from_secs(5)).unwrap();
+    assert!(registry.get_action("test.text-files").is_some());
 }
 
 #[test]
@@ -192,7 +218,12 @@ fn matcher_filters_every_file_and_returns_ids_in_stable_order() {
     context.files.pop();
     assert_eq!(
         ids(&context),
-        ["test.each", "test.single", "test.text-files", "test.wildcard"]
+        [
+            "test.each",
+            "test.single",
+            "test.text-files",
+            "test.wildcard"
+        ]
     );
     context.files.push(PathBuf::from("other.txt"));
     assert_eq!(
@@ -218,7 +249,10 @@ fn matcher_filters_every_file_and_returns_ids_in_stable_order() {
 fn wait_until(mut condition: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(10);
     while !condition() {
-        assert!(Instant::now() < deadline, "watcher did not reload the registry");
+        assert!(
+            Instant::now() < deadline,
+            "watcher did not reload the registry"
+        );
         std::thread::sleep(Duration::from_millis(20));
     }
 }

@@ -5,11 +5,11 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use bergamot_core::executors::process;
+use bergamot_core::staging::StagedFile;
 use bergamot_core::{
     ActionInvocation, ActionRegistry, CancellationToken, Cardinality, Dispatcher, DragContext,
     ExecutionError, ExecutorConfig, OutputConfig, OutputMode, Platform,
 };
-use bergamot_core::staging::StagedFile;
 use tempfile::tempdir;
 use tokio::sync::mpsc;
 

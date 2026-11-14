@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="bgSquircle" x1="64" y1="40" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0D1B14" />
+      <stop offset="100%" stop-color="#060D0A" />
+    </linearGradient>
+
+    <radialGradient id="ambientGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#84CC16" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#84CC16" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="rindGrad" x1="80" y1="80" x2="432" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A3E635" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+
+    <linearGradient id="baseWedgeGrad" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3F6212" />
+      <stop offset="100%" stop-color="#1A2E05" />
+    </linearGradient>
+
+    <linearGradient id="activeWedgeGrad" x1="256" y1="80" x2="440" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ECFCCB" />
+      <stop offset="45%" stop-color="#BEF264" />
+      <stop offset="100%" stop-color="#84CC16" />
+    </linearGradient>
+
+    <linearGradient id="leafGrad" x1="0" y1="-40" x2="90" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <filter id="activeGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="4" dy="8" stdDeviation="12" flood-color="#84CC16" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- macOS / Tauri App Icon Squircle Background -->
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bgSquircle)" />
+  <rect x="26" y="26" width="460" height="460" rx="106" fill="none" stroke="url(#rindGrad)" stroke-opacity="0.28" stroke-width="4" />
+  <!-- Ambient radial glow behind the fruit -->
+  <circle cx="281" cy="245" r="190" fill="url(#ambientGlow)" />
+  <g id="bergamotto-mark">
+
+    <!-- Stylized Geometric Bergamot Leaf -->
+    <g transform="translate(256, 70)">
+      <path d="M -4 10 C -8 -22 -48 -36 -74 -22 C -54 6 -26 16 -4 10 Z" fill="url(#leafGrad)" opacity="0.85" />
+      <path d="M 0 12 C 12 -34 68 -48 102 -24 C 76 12 36 22 0 12 Z" fill="url(#leafGrad)" stroke="#BEF264" stroke-width="1.5" stroke-opacity="0.5" />
+      <path d="M 4 10 Q 46 -12 88 -20" fill="none" stroke="#ECFCCB" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+    </g>
+    <g opacity="0.72">
+      <path d="M 261.24 196.19 Q 260.25 210.15 273.97 212.75 A 60 60 0 0 1 283.77 216.81 Q 295.32 224.68 304.49 214.1 L 360.69 159.8 Q 370.34 149.65 359.79 140.45 A 166 166 0 0 0 274.21 105 Q 260.25 104.05 259.89 118.05 Z" fill="url(#baseWedgeGrad)" stroke="#65A30D" stroke-opacity="0.45" stroke-width="1.75" />
+      <path d="M 265.39 192.57 Q 264.42 200.51 272.29 201.92 A 70 70 0 0 1 292.62 210.34 Q 299.18 214.91 304.12 208.61 L 351.34 159.42 Q 356.56 153.37 350.37 148.3 A 154 154 0 0 0 275.32 117.22 Q 267.37 116.42 266.77 124.4 Z" fill="none" stroke="#A3E635" stroke-opacity="0.14" stroke-width="1.2" />
+    </g>
+    <!-- Active Popped Bergamot Wedge -->
+    <g filter="url(#activeGlow)">
+      <path d="M 311.9 221.51 Q 301.32 230.68 309.19 242.23 A 60 60 0 0 1 313.25 252.03 Q 315.85 265.75 329.81 264.76 L 407.95 266.11 Q 421.95 265.75 421 251.79 A 166 166 0 0 0 385.55 166.21 Q 376.35 155.66 366.2 165.31 Z" fill="url(#activeWedgeGrad)" stroke="#ECFCCB" stroke-width="2.5" />
+      <path d="M 317.39 221.88 Q 311.09 226.82 315.66 233.38 A 70 70 0 0 1 324.08 253.71 Q 325.49 261.58 333.43 260.61 L 401.6 259.23 Q 409.58 258.63 408.78 250.68 A 154 154 0 0 0 377.7 175.63 Q 372.63 169.44 366.58 174.66 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="1.5" />
+    </g>
+    <g opacity="0.72">
+      <path d="M 329.81 275.24 Q 315.85 274.25 313.25 287.97 A 60 60 0 0 1 309.19 297.77 Q 301.32 309.32 311.9 318.49 L 366.2 374.69 Q 376.35 384.34 385.55 373.79 A 166 166 0 0 0 421 288.21 Q 421.95 274.25 407.95 273.89 Z" fill="url(#baseWedgeGrad)" stroke="#65A30D" stroke-opacity="0.45" stroke-width="1.75" />
+      <path d="M 333.43 279.39 Q 325.49 278.42 324.08 286.29 A 70 70 0 0 1 315.66 306.62 Q 311.09 313.18 317.39 318.12 L 366.58 365.34 Q 372.63 370.56 377.7 364.37 A 154 154 0 0 0 408.78 289.32 Q 409.58 281.37 401.6 280.77 Z" fill="none" stroke="#A3E635" stroke-opacity="0.14" stroke-width="1.2" />
+    </g>
+    <g opacity="0.86">
+      <path d="M 304.49 325.9 Q 295.32 315.32 283.77 323.19 A 60 60 0 0 1 273.97 327.25 Q 260.25 329.85 261.24 343.81 L 259.89 421.95 Q 260.25 435.95 274.21 435 A 166 166 0 0 0 359.79 399.55 Q 370.34 390.35 360.69 380.2 Z" fill="url(#baseWedgeGrad)" stroke="#65A30D" stroke-opacity="0.45" stroke-width="1.75" />
+      <path d="M 304.12 331.39 Q 299.18 325.09 292.62 329.66 A 70 70 0 0 1 272.29 338.08 Q 264.42 339.49 265.39 347.43 L 266.77 415.6 Q 267.37 423.58 275.32 422.78 A 154 154 0 0 0 350.37 391.7 Q 356.56 386.63 351.34 380.58 Z" fill="none" stroke="#A3E635" stroke-opacity="0.14" stroke-width="1.2" />
+    </g>
+    <g opacity="0.72">
+      <path d="M 250.76 343.81 Q 251.75 329.85 238.03 327.25 A 60 60 0 0 1 228.23 323.19 Q 216.68 315.32 207.51 325.9 L 151.31 380.2 Q 141.66 390.35 152.21 399.55 A 166 166 0 0 0 237.79 435 Q 251.75 435.95 252.11 421.95 Z" fill="url(#baseWedgeGrad)" stroke="#65A30D" stroke-opacity="0.45" stroke-width="1.75" />
+      <path d="M 246.61 347.43 Q 247.58 339.49 239.71 338.08 A 70 70 0 0 1 219.38 329.66 Q 212.82 325.09 207.88 331.39 L 160.66 380.58 Q 155.44 386.63 161.63 391.7 A 154 154 0 0 0 236.68 422.78 Q 244.63 423.58 245.23 415.6 Z" fill="none" stroke="#A3E635" stroke-opacity="0.14" stroke-width="1.2" />
+    </g>
+    <g opacity="0.86">
+      <path d="M 200.1 318.49 Q 210.68 309.32 202.81 297.77 A 60 60 0 0 1 198.75 287.97 Q 196.15 274.25 182.19 275.24 L 104.05 273.89 Q 90.05 274.25 91 288.21 A 166 166 0 0 0 126.45 373.79 Q 135.65 384.34 145.8 374.69 Z" fill="url(#baseWedgeGrad)" stroke="#65A30D" stroke-opacity="0.45" stroke-width="1.75" />
+      <path d="M 194.61 318.12 Q 200.91 313.18 196.34 306.62 A 70 70 0 0 1 187.92 286.29 Q 186.51 278.42 178.57 279.39 L 110.4 280.77 Q 102.42 281.37 103.22 289.32 A 154 154 0 0 0 134.3 364.37 Q 139.37 370.56 145.42 365.34 Z" fill="none" stroke="#A3E635" stroke-opacity="0.14" stroke-width="1.2" />
+    </g>
+    <g opacity="0.72">
+      <path d="M 182.19 264.76 Q 196.15 265.75 198.75 252.03 A 60 60 0 0 1 202.81 242.23 Q 210.68 230.68 200.1 221.51 L 145.8 165.31 Q 135.65 155.66 126.45 166.21 A 166 166 0 0 0 91 251.79 Q 90.05 265.75 104.05 266.11 Z" fill="url(#baseWedgeGrad)" stroke="#65A30D" stroke-opacity="0.45" stroke-width="1.75" />
+      <path d="M 178.57 260.61 Q 186.51 261.58 187.92 253.71 A 70 70 0 0 1 196.34 233.38 Q 200.91 226.82 194.61 221.88 L 145.42 174.66 Q 139.37 169.44 134.3 175.63 A 154 154 0 0 0 103.22 250.68 Q 102.42 258.63 110.4 259.23 Z" fill="none" stroke="#A3E635" stroke-opacity="0.14" stroke-width="1.2" />
+    </g>
+    <g opacity="0.86">
+      <path d="M 207.51 214.1 Q 216.68 224.68 228.23 216.81 A 60 60 0 0 1 238.03 212.75 Q 251.75 210.15 250.76 196.19 L 252.11 118.05 Q 251.75 104.05 237.79 105 A 166 166 0 0 0 152.21 140.45 Q 141.66 149.65 151.31 159.8 Z" fill="url(#baseWedgeGrad)" stroke="#65A30D" stroke-opacity="0.45" stroke-width="1.75" />
+      <path d="M 207.88 208.61 Q 212.82 214.91 219.38 210.34 A 70 70 0 0 1 239.71 201.92 Q 247.58 200.51 246.61 192.57 L 245.23 124.4 Q 244.63 116.42 236.68 117.22 A 154 154 0 0 0 161.63 148.3 Q 155.44 153.37 160.66 159.42 Z" fill="none" stroke="#A3E635" stroke-opacity="0.14" stroke-width="1.2" />
+    </g>
+
+    <!-- Center Drop-Zone Ring -->
+    <circle cx="256" cy="270" r="46" fill="none" stroke="url(#rindGrad)" stroke-width="3" stroke-dasharray="8 6" opacity="0.55" />
+    <circle cx="256" cy="270" r="8" fill="#BEF264" opacity="0.9" />
+  </g>
+</svg>

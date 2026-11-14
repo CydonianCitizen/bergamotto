@@ -75,6 +75,14 @@ pub struct ActionRegistry {
 
 impl ActionRegistry {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, RegistryError> {
+        Self::open_with_reload_handler(path, || {})
+    }
+
+    /// Calls the handler after a watcher event refreshes the registry for a JSON path.
+    pub fn open_with_reload_handler(
+        path: impl AsRef<Path>,
+        on_reload: impl Fn() + Send + 'static,
+    ) -> Result<Self, RegistryError> {
         let actions_dir = path.as_ref().to_path_buf();
         fs::create_dir_all(&actions_dir)?;
         let actions_dir = fs::canonicalize(actions_dir)?;
@@ -89,6 +97,7 @@ impl ActionRegistry {
             Arc::downgrade(&state),
             Arc::downgrade(&operation_lock),
             Arc::downgrade(&reload_errors),
+            on_reload,
         )?;
         watcher
             .watch(&actions_dir, RecursiveMode::NonRecursive)
@@ -149,10 +158,7 @@ impl ActionRegistry {
             .lock()
             .map_err(|_| RegistryError::LockPoisoned)?;
         self.refresh_locked()?;
-        let state = self
-            .state
-            .read()
-            .map_err(|_| RegistryError::LockPoisoned)?;
+        let state = self.state.read().map_err(|_| RegistryError::LockPoisoned)?;
         if state.duplicate_ids.contains(id) {
             return Err(RegistryError::DuplicateId(id.to_owned()));
         }
@@ -184,10 +190,7 @@ impl ActionRegistry {
             .lock()
             .map_err(|_| RegistryError::LockPoisoned)?;
         self.refresh_locked()?;
-        let state = self
-            .state
-            .read()
-            .map_err(|_| RegistryError::LockPoisoned)?;
+        let state = self.state.read().map_err(|_| RegistryError::LockPoisoned)?;
         if state.duplicate_ids.contains(source_id) {
             return Err(RegistryError::DuplicateId(source_id.to_owned()));
         }
@@ -213,10 +216,7 @@ impl ActionRegistry {
     }
 
     pub fn export_action(&self, id: &str) -> Result<String, RegistryError> {
-        let state = self
-            .state
-            .read()
-            .map_err(|_| RegistryError::LockPoisoned)?;
+        let state = self.state.read().map_err(|_| RegistryError::LockPoisoned)?;
         if state.duplicate_ids.contains(id) {
             return Err(RegistryError::DuplicateId(id.to_owned()));
         }
@@ -245,10 +245,7 @@ impl ActionRegistry {
         validate_manifest_value(&value)?;
 
         self.refresh_locked()?;
-        let state = self
-            .state
-            .read()
-            .map_err(|_| RegistryError::LockPoisoned)?;
+        let state = self.state.read().map_err(|_| RegistryError::LockPoisoned)?;
         if state.duplicate_ids.contains(&action.id) {
             return Err(RegistryError::DuplicateId(action.id.clone()));
         }
@@ -278,15 +275,13 @@ impl ActionRegistry {
                 .persist(&target)
                 .map_err(|error| RegistryError::Io(error.error))?;
         } else {
-            temporary
-                .persist_noclobber(&target)
-                .map_err(|error| {
-                    if error.error.kind() == io::ErrorKind::AlreadyExists {
-                        RegistryError::AlreadyExists(action.id.clone())
-                    } else {
-                        RegistryError::Io(error.error)
-                    }
-                })?;
+            temporary.persist_noclobber(&target).map_err(|error| {
+                if error.error.kind() == io::ErrorKind::AlreadyExists {
+                    RegistryError::AlreadyExists(action.id.clone())
+                } else {
+                    RegistryError::Io(error.error)
+                }
+            })?;
         }
 
         self.refresh_locked()?;
@@ -364,7 +359,11 @@ fn initialize_starters(actions_dir: &Path) -> Result<(), RegistryError> {
                 }
             }
         } else {
-            match OpenOptions::new().write(true).create_new(true).open(marker_path) {
+            match OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(marker_path)
+            {
                 Ok(mut marker) => marker.write_all(b"1\n")?,
                 Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
                 Err(error) => return Err(error.into()),
@@ -446,6 +445,7 @@ fn create_watcher(
     state: Weak<RwLock<RegistryState>>,
     operation_lock: Weak<Mutex<()>>,
     reload_errors: Weak<Mutex<Vec<String>>>,
+    on_reload: impl Fn() + Send + 'static,
 ) -> Result<RecommendedWatcher, RegistryError> {
     let directory = directory.to_path_buf();
     RecommendedWatcher::new(
@@ -477,6 +477,10 @@ fn create_watcher(
                     return;
                 }
             }
+            let changed_manifest = event.paths.iter().any(|path| {
+                path.extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+            });
 
             match scan_directory(&directory) {
                 Ok((next_state, errors)) => {
@@ -485,6 +489,10 @@ fn create_watcher(
                     }
                     if let Ok(mut current_errors) = reload_errors.lock() {
                         *current_errors = errors;
+                    }
+                    drop(_guard);
+                    if changed_manifest {
+                        on_reload();
                     }
                 }
                 Err(error) => {

@@ -107,7 +107,10 @@ impl Dispatcher {
                 }
                 result.output_files.push(staged.commit()?);
             }
-            if matches!(action.output.mode, OutputMode::Stdout | OutputMode::Clipboard) {
+            if matches!(
+                action.output.mode,
+                OutputMode::Stdout | OutputMode::Clipboard
+            ) {
                 text_output.extend(output.stdout);
             }
             result.stderr.extend(output.stderr);

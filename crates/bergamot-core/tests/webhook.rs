@@ -43,7 +43,11 @@ async fn webhook_posts_multiple_files_with_bearer_credentials() {
 
     let executor = test_executor();
     let output = executor
-        .execute(&config(url, BTreeMap::new(), 5), &files, &CancellationToken::new())
+        .execute(
+            &config(url, BTreeMap::new(), 5),
+            &files,
+            &CancellationToken::new(),
+        )
         .await
         .unwrap();
     assert_eq!(output.stdout, b"received");
@@ -94,7 +98,11 @@ async fn webhook_times_out_while_reading_a_response() {
 
     let executor = test_executor();
     let error = executor
-        .execute(&config(url, BTreeMap::new(), 1), &[file], &CancellationToken::new())
+        .execute(
+            &config(url, BTreeMap::new(), 1),
+            &[file],
+            &CancellationToken::new(),
+        )
         .await
         .unwrap_err();
     assert!(matches!(error, ExecutionError::TimedOut(1)));
