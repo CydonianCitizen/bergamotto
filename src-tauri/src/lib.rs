@@ -14,7 +14,14 @@ use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use commands::Actions;
 
 fn clean_file_path(arg: &str, cwd: &Path) -> PathBuf {
-    let clean = arg.strip_prefix("file://").unwrap_or(arg);
+    #[allow(unused_mut)]
+    let mut clean = arg.strip_prefix("file://").unwrap_or(arg);
+    #[cfg(windows)]
+    {
+        if clean.starts_with('/') && clean.len() >= 3 && clean.as_bytes()[2] == b':' {
+            clean = &clean[1..];
+        }
+    }
     let path = Path::new(clean);
     if path.is_absolute() {
         path.to_path_buf()
@@ -260,19 +267,29 @@ mod tests {
     #[test]
     fn radial_arguments_preserve_spaces_and_resolve_relative_paths() {
         let cwd = std::env::current_dir().unwrap();
+        let sample_abs = if cfg!(windows) {
+            PathBuf::from("C:\\tmp\\third.txt")
+        } else {
+            PathBuf::from("/tmp/third.txt")
+        };
+        let file_uri = if cfg!(windows) {
+            "file:///C:/tmp/third.txt".to_string()
+        } else {
+            "file:///tmp/third.txt".to_string()
+        };
         let args = [
-            "bergamot",
-            "--radial-here",
-            "a b.txt",
-            "-second.txt",
-            "file:///tmp/third.txt",
+            "bergamot".to_string(),
+            "--radial-here".to_string(),
+            "a b.txt".to_string(),
+            "-second.txt".to_string(),
+            file_uri,
         ];
         assert_eq!(
-            radial_files(args.map(str::to_owned), &cwd),
+            radial_files(args, &cwd),
             Some(vec![
                 cwd.join("a b.txt"),
                 cwd.join("-second.txt"),
-                PathBuf::from("/tmp/third.txt")
+                sample_abs,
             ])
         );
         assert_eq!(radial_files(["bergamot".to_owned()], &cwd), None);

@@ -124,6 +124,9 @@ fn reload_handler_sees_external_manifest_changes() {
     })
     .unwrap();
 
+    // Drain initial seeding events if any
+    while changes.recv_timeout(Duration::from_millis(100)).is_ok() {}
+
     let source = temp.path().join("external.tmp");
     fs::write(&source, VALID).unwrap();
     assert!(changes.recv_timeout(Duration::from_millis(100)).is_err());
