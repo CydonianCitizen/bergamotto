@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint-and-frontend:
+    name: Lint, Typecheck & Formatting
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Setup Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
+  cross-os-check-and-test:
+    name: Check & Test (${{ matrix.name }})
+    needs: lint-and-frontend
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            name: Linux x64
+          - os: macos-15
+            name: macOS 15 (Apple Silicon & Intel)
+          - os: windows-latest
+            name: Windows x64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libx11-dev \
+            libdbus-1-dev \
+            xvfb
+
+      - name: Setup Rust toolchain (macOS Universal targets)
+        if: runner.os == 'macOS'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+          components: clippy
+
+      - name: Setup Rust toolchain (default)
+        if: runner.os != 'macOS'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Build frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Check Intel Mac (x86_64-apple-darwin)
+        if: runner.os == 'macOS'
+        run: cargo check --workspace --target x86_64-apple-darwin
+
+      - name: Check Apple Silicon (aarch64-apple-darwin)
+        if: runner.os == 'macOS'
+        run: cargo check --workspace --target aarch64-apple-darwin
+
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run tests (Linux xvfb)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a cargo test --workspace
+
+      - name: Run tests
+        if: runner.os != 'Linux'
+        run: cargo test --workspace
