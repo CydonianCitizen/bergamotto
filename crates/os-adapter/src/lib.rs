@@ -192,11 +192,20 @@ impl MonitorControl {
 
     pub fn configure(&self, enabled: bool, modifier: ModifierKey) -> bool {
         let flags = (modifier.to_bits() << 1) | u64::from(enabled);
-        self.0
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
-                (current & 15 != flags).then_some((current & !15).wrapping_add(16) | flags)
-            })
-            .is_ok()
+        let mut current = self.0.load(Ordering::Relaxed);
+        loop {
+            if current & 15 == flags {
+                return false;
+            }
+            let next = (current & !15).wrapping_add(16) | flags;
+            match self
+                .0
+                .compare_exchange_weak(current, next, Ordering::Relaxed, Ordering::Relaxed)
+            {
+                Ok(_) => return true,
+                Err(actual) => current = actual,
+            }
+        }
     }
 
     pub fn accepts(&self, generation: u64) -> bool {
