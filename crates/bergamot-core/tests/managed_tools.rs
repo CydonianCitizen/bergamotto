@@ -126,7 +126,7 @@ fn zip_slip_path_traversal_is_blocked() {
 
 #[cfg(unix)]
 #[test]
-fn zip_symlink_entry_is_rejected() {
+fn zip_escaping_symlink_entry_is_rejected() {
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("symlink.zip");
     let destination = temp.path().join("extracted");
