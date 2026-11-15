@@ -24,3 +24,27 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; fin
 elapsed_seconds=25.88
 max_rss_kib=338980
 ```
+
+## Release-profile measurement
+
+Built the same integration test with `cargo test --release -p bergamot-core --test managed_tools --no-run`; compilation completed successfully in 57.55 seconds. The measured child was the already-built optimized test binary, so build time is excluded. Input archive is unchanged and its SHA-256 matches the value above.
+
+The release extraction completed successfully in **7.19 seconds**, with peak RSS **335,340 KiB** (about 327.5 MiB). It stayed below the 15-second threshold; `lzma-rs` remains in use and no `xz2` dependency or license change was needed.
+
+Reproduction from repository root:
+
+```sh
+python3 -c 'import os,resource,subprocess,time; env=os.environ.copy(); env["BERGAMOT_FFMPEG_ARCHIVE"]="/tmp/ffmpeg-release-amd64-static.tar.xz"; command=["target/release/deps/managed_tools-b5c7c356b4a5fee9","real_ffmpeg_archive_extraction_benchmark","--ignored","--exact","--nocapture"]; start=time.monotonic(); result=subprocess.run(command,env=env,capture_output=True,text=True,timeout=60); elapsed=time.monotonic()-start; print(result.stdout,end=""); print(result.stderr,end=""); print(f"elapsed_seconds={elapsed:.2f}"); print(f"max_rss_kib={resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss}"); raise SystemExit(result.returncode)'
+```
+
+Observed output:
+
+```text
+running 1 test
+test real_ffmpeg_archive_extraction_benchmark ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 7.19s
+
+elapsed_seconds=7.19
+max_rss_kib=335340
+```
