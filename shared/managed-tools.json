@@ -124,6 +124,44 @@
         "macos": "brew install python3",
         "windows": "winget install Python.Python.3.12"
       }
+    },
+    "magick": {
+      "name": "ImageMagick",
+      "description": "Image manipulation suite (required for WebP conversion starter action).",
+      "license": {
+        "name": "ImageMagick (Apache-2.0 compatible)",
+        "url": "https://imagemagick.org/script/license.php",
+        "isCopyleft": false,
+        "sourceUrl": "https://github.com/ImageMagick/ImageMagick"
+      },
+      "verification": {
+        "command": ["-version"],
+        "formatsCommand": ["-list", "format"],
+        "requiredFormats": ["WEBP"]
+      },
+      "platforms": {
+        "windows-x64": {
+          "version": "7.1.2-35",
+          "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-35/ImageMagick-7.1.2-35-portable-Q16-HDRI-x64.7z",
+          "sha256": "34db4364da26c88d6b8cc5bbc1fff22b85d00d3b399c82fe85ee4790efacbbf1",
+          "archiveFormat": "7z",
+          "binaryPath": "magick.exe",
+          "sizeBytes": 12117825
+        },
+        "linux-x64": {
+          "version": "7.1.2-35",
+          "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-35/ImageMagick-7.1.2-35-gcc-x86_64.AppImage",
+          "sha256": "f111044ed06b68cfb478df724c5a32d35145afa21073242f888d234a2f8cc002",
+          "archiveFormat": "appimage",
+          "binaryPath": "squashfs-root/AppRun",
+          "sizeBytes": 33352184
+        }
+      },
+      "manualInstructions": {
+        "linux": "sudo apt install imagemagick || sudo pacman -S imagemagick || sudo dnf install ImageMagick",
+        "macos": "brew install imagemagick",
+        "windows": "winget install ImageMagick.ImageMagick"
+      }
     }
   }
 }

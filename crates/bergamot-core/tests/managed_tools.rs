@@ -488,3 +488,75 @@ fn python3_managed_tool_resolution_and_stub_rejection() {
 
     assert!(resolve_dependency_detailed(&executor, &settings_with_stub).is_err());
 }
+
+#[test]
+fn imagemagick_manifest_and_verification() {
+    let manifest = ManagedToolsManifest::load_embedded().expect("Manifest should parse");
+    let magick = manifest
+        .tools
+        .get("magick")
+        .expect("magick should be defined");
+    assert_eq!(magick.name, "ImageMagick");
+    assert!(!magick.license.is_copyleft);
+    assert!(magick.license.name.contains("Apache-2.0"));
+
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        let asset = manifest.get_tool_asset("magick").expect("Linux x64 asset");
+        assert_eq!(asset.version, "7.1.2-35");
+        assert_eq!(asset.binary_path, "squashfs-root/AppRun");
+        assert_eq!(asset.archive_format, ArchiveFormat::AppImage);
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        assert!(manifest.get_tool_asset("magick").is_none());
+        assert!(manifest
+            .get_manual_instruction("magick")
+            .unwrap()
+            .contains("brew"));
+    }
+
+    let temp = tempdir().unwrap();
+    let fake_magick = temp.path().join("fake_magick");
+    fs::write(
+        &fake_magick,
+        "#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then echo 'Version: ImageMagick 7.1.2-35'; exit 0; fi\nif [ \"$1\" = \"-list\" ]; then echo 'WEBP* rw+ WebP Image Format'; exit 0; fi\nexit 0\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&fake_magick, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    let meta =
+        bergamot_core::managed_tools::verify_tool("magick", &fake_magick, &magick.verification)
+            .expect("Should verify valid magick with WEBP");
+    assert!(meta.detected_license.contains("ImageMagick"));
+
+    let missing_webp_magick = temp.path().join("missing_webp_magick");
+    fs::write(
+        &missing_webp_magick,
+        "#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then echo 'Version: ImageMagick 7.1.2-35'; exit 0; fi\nif [ \"$1\" = \"-list\" ]; then echo 'PNG* rw- PNG Format'; exit 0; fi\nexit 0\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&missing_webp_magick, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    let err = bergamot_core::managed_tools::verify_tool(
+        "magick",
+        &missing_webp_magick,
+        &magick.verification,
+    )
+    .expect_err("Should fail when WEBP is missing");
+    match err {
+        bergamot_core::managed_tools::VerificationError::MissingFormats(missing) => {
+            assert_eq!(missing, vec!["WEBP"]);
+        }
+        other => panic!("Expected MissingFormats, got {:?}", other),
+    }
+}
