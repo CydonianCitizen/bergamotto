@@ -41,7 +41,8 @@
     "category": "Utility",
     "windows": {
       "wix": {
-        "version": "0.0.1"
+        "version": "0.0.1",
+        "upgradeCode": "1068fcc8-4900-5e1e-b6cf-74a49b559aa7"
       }
     }
   }

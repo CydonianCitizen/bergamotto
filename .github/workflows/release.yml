@@ -10,6 +10,15 @@ on:
         description: 'Release tag to publish (e.g. v0.0.1-alpha)'
         required: false
         default: 'v0.0.1-alpha'
+      platform:
+        description: 'Platform to build (all, windows, linux, macos)'
+        required: false
+        default: 'all'
+      publish:
+        description: 'Publish GitHub Release'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -18,6 +27,7 @@ jobs:
   build-release:
     name: Build (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
+    if: inputs.platform == '' || inputs.platform == 'all' || inputs.platform == matrix.platform
     strategy:
       fail-fast: false
       matrix:
@@ -77,14 +87,18 @@ jobs:
         run: |
           npx tauri build --target universal-apple-darwin
           mkdir -p dist-release
-          # Ad-hoc code signing for macOS application bundle
-          find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app" -maxdepth 1 -exec codesign --force --deep --sign - {} + || true
-          find src-tauri/target/universal-apple-darwin/release/bundle/dmg -type f -name "*.dmg" -exec cp {} dist-release/ \; 2>/dev/null || true
-          # Package .app bundle as tar.gz
-          cd src-tauri/target/universal-apple-darwin/release/bundle/macos
-          if [ -d "Bergamotto.app" ]; then
-            tar -czf "$GITHUB_WORKSPACE/dist-release/Bergamotto_universal.app.tar.gz" Bergamotto.app
-          fi
+          for search_dir in target src-tauri/target; do
+            if [ -d "$search_dir" ]; then
+              find "$search_dir" -name "*.app" -path "*/bundle/macos/*" -maxdepth 6 -exec codesign --force --deep --sign - {} + 2>/dev/null || true
+              find "$search_dir" -type f -name "*.dmg" -path "*/bundle/dmg/*" -exec cp {} dist-release/ \; 2>/dev/null || true
+              for app_path in $(find "$search_dir" -name "Bergamotto.app" -path "*/bundle/macos/*" -type d 2>/dev/null); do
+                tar -czf "$GITHUB_WORKSPACE/dist-release/Bergamotto_universal.app.tar.gz" -C "$(dirname "$app_path")" Bergamotto.app
+                break
+              done
+            fi
+          done
+          echo "macOS release artifacts:"
+          ls -la dist-release/
 
       - name: Build Windows Installers (NSIS & MSI)
         if: matrix.platform == 'windows'
@@ -92,27 +106,41 @@ jobs:
         run: |
           npx tauri build --bundles nsis,msi
           mkdir -p dist-release
-          find src-tauri/target/release/bundle/nsis -type f -name "*.exe" -exec cp {} dist-release/ \; 2>/dev/null || true
-          find src-tauri/target/release/bundle/msi -type f -name "*.msi" -exec cp {} dist-release/ \; 2>/dev/null || true
+          for search_dir in target src-tauri/target; do
+            if [ -d "$search_dir" ]; then
+              find "$search_dir" -type f -name "*.exe" -path "*/bundle/nsis/*" -exec cp {} dist-release/ \; 2>/dev/null || true
+              find "$search_dir" -type f -name "*.msi" -path "*/bundle/msi/*" -exec cp {} dist-release/ \; 2>/dev/null || true
+            fi
+          done
+          echo "Windows release artifacts:"
+          ls -la dist-release/
 
       - name: Build Linux Bundles (.deb & .AppImage)
         if: matrix.platform == 'linux'
         run: |
           npx tauri build --bundles deb,appimage
           mkdir -p dist-release
-          find src-tauri/target/release/bundle/deb -type f -name "*.deb" -exec cp {} dist-release/ \; 2>/dev/null || true
-          find src-tauri/target/release/bundle/appimage -type f -name "*.AppImage" -exec cp {} dist-release/ \; 2>/dev/null || true
+          for search_dir in target src-tauri/target; do
+            if [ -d "$search_dir" ]; then
+              find "$search_dir" -type f -name "*.deb" -path "*/bundle/deb/*" -exec cp {} dist-release/ \; 2>/dev/null || true
+              find "$search_dir" -type f -name "*.AppImage" -path "*/bundle/appimage/*" -exec cp {} dist-release/ \; 2>/dev/null || true
+            fi
+          done
+          echo "Linux release artifacts:"
+          ls -la dist-release/
 
       - name: Upload bundle artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-bundles-${{ matrix.platform }}
           path: dist-release/*
+          if-no-files-found: warn
 
   publish-release:
     name: Publish GitHub Release
     needs: build-release
     runs-on: ubuntu-24.04
+    if: (inputs.publish == true || inputs.publish == '' || github.event_name == 'push') && !cancelled()
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
