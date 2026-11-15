@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::{absolute, Path, PathBuf};
-use std::process::Stdio;
+use std::process::{Output, Stdio};
 use std::time::Duration;
 
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -66,7 +66,8 @@ pub async fn execute_with_settings(
                 None => default_work_dir.to_path_buf(),
             };
 
-            let mut command = Command::new(resolve_program(program, settings, &search_path)?);
+            let mut command =
+                Command::new(resolve_program(program, settings, &search_path, cancel).await?);
             for argument in args {
                 for expanded in expand_argument(argument, &inputs, output.as_deref(), &work_dir)? {
                     command.arg(expanded);
@@ -82,7 +83,7 @@ pub async fn execute_with_settings(
             timeout_seconds,
         } => {
             let work_dir = default_work_dir;
-            let program = resolve_program(interpreter, settings, &search_path)?;
+            let program = resolve_program(interpreter, settings, &search_path, cancel).await?;
             let powershell = is_powershell(program.to_str().unwrap_or(interpreter));
             let script =
                 resolve_script(script_path.as_deref(), script_body.as_deref(), powershell)?;
@@ -127,8 +128,38 @@ pub async fn execute_with_settings(
         ));
     }
 
+    command.env("PATH", search_path);
+    let output = run_command(&mut command, timeout_seconds, cancel).await?;
+    if !output.status.success() {
+        return Err(ExecutionError::ProcessFailed {
+            code: output.status.code(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        });
+    }
+
+    Ok(ExecutionOutput {
+        stdout: output.stdout,
+        stderr: output.stderr,
+    })
+}
+
+/// Runs one child as a process group, draining both output pipes under a shared
+/// cancellation/deadline lifecycle so descendants cannot keep a caller waiting.
+pub(crate) async fn run_command(
+    command: &mut Command,
+    timeout_seconds: u32,
+    cancel: &CancellationToken,
+) -> Result<Output, ExecutionError> {
+    if cancel.is_cancelled() {
+        return Err(ExecutionError::Cancelled);
+    }
+    if timeout_seconds == 0 {
+        return Err(ExecutionError::InvalidConfig(
+            "process timeout must be greater than zero".to_owned(),
+        ));
+    }
+
     command
-        .env("PATH", search_path)
         .kill_on_drop(true)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -143,7 +174,7 @@ pub async fn execute_with_settings(
         let stdout = leader.stdout.take();
         let stderr = leader.stderr.take();
         let wait_and_read = async move {
-            // The deadline stays active while descendants hold inherited pipes open.
+            // Keep the deadline active while descendants hold inherited pipes open.
             tokio::try_join!(leader.wait(), read_pipe(stdout), read_pipe(stderr))
         };
         let timeout = Duration::from_secs(u64::from(timeout_seconds));
@@ -165,15 +196,17 @@ pub async fn execute_with_settings(
         }
     };
     if !status.success() {
+        // A descendant may have closed both output pipes and outlived the leader.
         group.terminate().await;
-        return Err(ExecutionError::ProcessFailed {
-            code: status.code(),
-            stderr: String::from_utf8_lossy(&stderr).into_owned(),
-        });
+    } else {
+        group.active = false;
     }
 
-    group.active = false;
-    Ok(ExecutionOutput { stdout, stderr })
+    Ok(Output {
+        status,
+        stdout,
+        stderr,
+    })
 }
 
 fn resolve_working_directory(
@@ -305,24 +338,38 @@ pub struct ResolvedDependency {
     pub source: ToolSource,
 }
 
-pub fn resolve_dependency(
+const PYTHON_PROBE_TIMEOUT_SECONDS: u32 = 5;
+
+#[cfg(target_os = "macos")]
+const XCODE_SELECT_TIMEOUT_SECONDS: u32 = 5;
+
+pub async fn resolve_dependency(
     executor: &ExecutorConfig,
     settings: &AppSettings,
+    cancel: &CancellationToken,
 ) -> Result<Option<PathBuf>, ExecutionError> {
-    resolve_dependency_detailed(executor, settings).map(|res| res.map(|d| d.path))
+    resolve_dependency_detailed(executor, settings, cancel)
+        .await
+        .map(|res| res.map(|d| d.path))
 }
 
-pub fn resolve_dependency_detailed(
+pub async fn resolve_dependency_detailed(
     executor: &ExecutorConfig,
     settings: &AppSettings,
+    cancel: &CancellationToken,
 ) -> Result<Option<ResolvedDependency>, ExecutionError> {
+    if cancel.is_cancelled() {
+        return Err(ExecutionError::Cancelled);
+    }
+
     let program = match executor {
         ExecutorConfig::Process { program, .. } => program,
         ExecutorConfig::Script { interpreter, .. } => interpreter,
         ExecutorConfig::Webhook { .. } => return Ok(None),
     };
 
-    let path = resolve_program(program, settings, &search_path(executor, settings)?)?;
+    let search_path = search_path(executor, settings)?;
+    let path = resolve_program(program, settings, &search_path, cancel).await?;
     let managed_base = settings.managed_tools_dir();
     let source = if let Some(ref base) = managed_base {
         if path.starts_with(base) {
@@ -377,10 +424,11 @@ fn default_tool_paths() -> Vec<PathBuf> {
     Vec::new()
 }
 
-fn resolve_program(
+async fn resolve_program(
     program: &str,
     settings: &AppSettings,
     search_path: &OsStr,
+    cancel: &CancellationToken,
 ) -> Result<PathBuf, ExecutionError> {
     reject_windows_batch_file(program)?;
     let replacement = settings.tool_overrides.get(program);
@@ -388,23 +436,28 @@ fn resolve_program(
     reject_windows_batch_file(configured)?;
     let path = Path::new(configured);
     let found = if replacement.is_some() || path.file_name() != Some(path.as_os_str()) {
-        executable_at(absolute(path)?).and_then(|p| validate_candidate(program, p))
+        match executable_at(absolute(path)?) {
+            Some(candidate) => validate_candidate(program, candidate, cancel).await?,
+            None => None,
+        }
     } else {
         let mut candidate_names = vec![configured];
         if cfg!(windows) && configured.eq_ignore_ascii_case("python3") {
             candidate_names.push("python");
         }
-        std::env::split_paths(search_path).find_map(|directory| {
+        let mut found = None;
+        'directories: for directory in std::env::split_paths(search_path) {
             for name in &candidate_names {
                 let p = Path::new(name);
                 if let Some(cand) = executable_at(directory.join(p)) {
-                    if let Some(valid) = validate_candidate(program, cand) {
-                        return Some(valid);
+                    if let Some(valid) = validate_candidate(program, cand, cancel).await? {
+                        found = Some(valid);
+                        break 'directories;
                     }
                 }
             }
-            None
-        })
+        }
+        found
     };
     let found = found.or_else(|| {
         let tools_dir = settings.managed_tools_dir()?;
@@ -417,11 +470,15 @@ fn resolve_program(
     })
 }
 
-fn validate_candidate(program: &str, path: PathBuf) -> Option<PathBuf> {
+async fn validate_candidate(
+    program: &str,
+    path: PathBuf,
+    cancel: &CancellationToken,
+) -> Result<Option<PathBuf>, ExecutionError> {
     let is_python =
         program.eq_ignore_ascii_case("python3") || program.eq_ignore_ascii_case("python");
     if !is_python {
-        return Some(path);
+        return Ok(Some(path));
     }
 
     #[cfg(windows)]
@@ -431,59 +488,44 @@ fn validate_candidate(program: &str, path: PathBuf) -> Option<PathBuf> {
             || path_str.contains(r"/Microsoft/WindowsApps/")
             || path_str.ends_with(r"\Microsoft\WindowsApps")
         {
-            return None;
+            return Ok(None);
         }
     }
 
     #[cfg(target_os = "macos")]
     {
         if path == Path::new("/usr/bin/python3") {
-            let has_clt = std::process::Command::new("xcode-select")
-                .arg("-p")
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false);
+            let mut command = Command::new("xcode-select");
+            command.arg("-p");
+            let has_clt =
+                match run_command(&mut command, XCODE_SELECT_TIMEOUT_SECONDS, cancel).await {
+                    Ok(output) => output.status.success(),
+                    Err(ExecutionError::Cancelled) => return Err(ExecutionError::Cancelled),
+                    Err(_) => false,
+                };
             if !has_clt {
-                return None;
+                return Ok(None);
             }
         }
     }
 
-    if !verify_python_candidate(&path) {
-        return None;
+    if !verify_python_candidate(&path, cancel).await? {
+        return Ok(None);
     }
 
-    Some(path)
+    Ok(Some(path))
 }
 
-fn verify_python_candidate(path: &Path) -> bool {
-    let mut child = match std::process::Command::new(path)
-        .args(["-c", "import sys; sys.exit(0)"])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-    {
-        Ok(c) => c,
-        Err(_) => return false,
-    };
-
-    let start = std::time::Instant::now();
-    let timeout = std::time::Duration::from_secs(5);
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) => return status.success(),
-            Ok(None) => {
-                if start.elapsed() > timeout {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    return false;
-                }
-                std::thread::sleep(std::time::Duration::from_millis(20));
-            }
-            Err(_) => return false,
-        }
+async fn verify_python_candidate(
+    path: &Path,
+    cancel: &CancellationToken,
+) -> Result<bool, ExecutionError> {
+    let mut command = Command::new(path);
+    command.args(["-c", "import sys; sys.exit(0)"]);
+    match run_command(&mut command, PYTHON_PROBE_TIMEOUT_SECONDS, cancel).await {
+        Ok(output) => Ok(output.status.success()),
+        Err(ExecutionError::Cancelled) => Err(ExecutionError::Cancelled),
+        Err(_) => Ok(false),
     }
 }
 
@@ -578,12 +620,46 @@ async fn read_pipe(pipe: Option<impl AsyncRead + Unpin>) -> io::Result<Vec<u8>> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    use std::fs;
+    #[cfg(unix)]
+    use std::io::Write;
 
     #[test]
     fn placeholders_in_inserted_paths_are_literal() {
         let inputs = [PathBuf::from("${output}.txt")];
         let expanded = expand_argument("prefix=${input}", &inputs, None, Path::new("."));
         assert_eq!(expanded.unwrap(), [OsString::from("prefix=${output}.txt")]);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn shared_runner_kills_descendants_when_leader_exits_unsuccessfully() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let script = temp.path().join("leader.sh");
+        let heartbeat = temp.path().join("heartbeat");
+        // The child closes the captured pipes but keeps running after its leader exits.
+        // This exercises the nonzero-status cleanup path rather than pipe-drain timeout.
+        let mut fixture = fs::File::create(&script).unwrap();
+        fixture
+            .write_all(b"#!/bin/sh\n(while :; do printf . >> \"$1\"; sleep 0.05; done) >/dev/null 2>&1 &\nwhile [ ! -e \"$1\" ]; do sleep 0.01; done\nexit 23\n")
+            .unwrap();
+        fixture.sync_all().unwrap();
+        drop(fixture);
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+
+        let mut command = Command::new(&script);
+        command.arg(&heartbeat);
+        let output = run_command(&mut command, 3, &CancellationToken::new())
+            .await
+            .unwrap();
+
+        assert_eq!(output.status.code(), Some(23));
+        let size = fs::metadata(&heartbeat).unwrap().len();
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert_eq!(fs::metadata(&heartbeat).unwrap().len(), size);
     }
 
     #[cfg(windows)]

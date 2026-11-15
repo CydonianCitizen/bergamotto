@@ -1,14 +1,34 @@
 use bergamot_core::descriptor::ExecutorConfig;
 use bergamot_core::executors::process::{resolve_dependency_detailed, ToolSource};
 use bergamot_core::managed_tools::download::is_allowed_host;
-use bergamot_core::managed_tools::extractor::{extract_archive, ExtractionError};
+use bergamot_core::managed_tools::extractor::{
+    extract_archive as extract_archive_async, ExtractionError,
+};
 use bergamot_core::managed_tools::manifest::{ArchiveFormat, ManagedToolsManifest};
-use bergamot_core::AppSettings;
+use bergamot_core::{AppSettings, CancellationToken};
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 use tempfile::tempdir;
+
+async fn extract_archive(
+    archive_path: &Path,
+    format: ArchiveFormat,
+    destination: &Path,
+    max_files: usize,
+    max_decompressed_bytes: u64,
+) -> Result<(), ExtractionError> {
+    extract_archive_async(
+        archive_path,
+        format,
+        destination,
+        max_files,
+        max_decompressed_bytes,
+        &CancellationToken::new(),
+    )
+    .await
+}
 
 fn shell_invocation(script: String) -> (std::path::PathBuf, Vec<String>) {
     #[cfg(unix)]
@@ -55,8 +75,8 @@ fn shell_exit(code: u8) -> Vec<String> {
     shell_invocation(script).1
 }
 
-#[test]
-fn embedded_manifest_loads_and_has_ffmpeg() {
+#[tokio::test]
+async fn embedded_manifest_loads_and_has_ffmpeg() {
     let manifest = ManagedToolsManifest::load_embedded().expect("Embedded manifest must parse");
     assert_eq!(manifest.schema_version, 1);
     let ffmpeg = manifest
@@ -79,8 +99,8 @@ fn embedded_manifest_loads_and_has_ffmpeg() {
     assert_eq!(asset.sha256.len(), 64);
 }
 
-#[test]
-fn download_allowed_hosts_allowlist() {
+#[tokio::test]
+async fn download_allowed_hosts_allowlist() {
     assert!(is_allowed_host("github.com"));
     assert!(is_allowed_host("release-assets.githubusercontent.com"));
     assert!(is_allowed_host("objects.githubusercontent.com"));
@@ -97,8 +117,8 @@ fn download_allowed_hosts_allowlist() {
     assert!(!is_allowed_host("malicious-site.org"));
 }
 
-#[test]
-fn zip_slip_path_traversal_is_blocked() {
+#[tokio::test]
+async fn zip_slip_path_traversal_is_blocked() {
     let temp = tempdir().unwrap();
     let zip_path = temp.path().join("slip.zip");
     let extract_dir = temp.path().join("extracted");
@@ -114,6 +134,7 @@ fn zip_slip_path_traversal_is_blocked() {
     }
 
     let err = extract_archive(&zip_path, ArchiveFormat::Zip, &extract_dir, 100, 1_000_000)
+        .await
         .expect_err("Should block path traversal in zip");
 
     match err {
@@ -125,8 +146,8 @@ fn zip_slip_path_traversal_is_blocked() {
 }
 
 #[cfg(unix)]
-#[test]
-fn zip_escaping_symlink_entry_is_rejected() {
+#[tokio::test]
+async fn zip_escaping_symlink_entry_is_rejected() {
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("symlink.zip");
     let destination = temp.path().join("extracted");
@@ -141,6 +162,7 @@ fn zip_escaping_symlink_entry_is_rejected() {
     zip.finish().unwrap();
 
     let error = extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 10, 100)
+        .await
         .expect_err("zip symlink entry must be rejected");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -149,8 +171,8 @@ fn zip_escaping_symlink_entry_is_rejected() {
 }
 
 #[cfg(unix)]
-#[test]
-fn zip_existing_symlink_parent_cannot_escape_destination() {
+#[tokio::test]
+async fn zip_existing_symlink_parent_cannot_escape_destination() {
     use std::os::unix::fs::symlink;
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("write.zip");
@@ -166,13 +188,17 @@ fn zip_existing_symlink_parent_cannot_escape_destination() {
     zip.write_all(b"must not escape").unwrap();
     zip.finish().unwrap();
 
-    assert!(extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 10, 100).is_err());
+    assert!(
+        extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 10, 100)
+            .await
+            .is_err()
+    );
     assert!(!outside.join("payload").exists());
 }
 
 #[cfg(unix)]
-#[test]
-fn zip_existing_hardlink_target_is_not_overwritten() {
+#[tokio::test]
+async fn zip_existing_hardlink_target_is_not_overwritten() {
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("hardlink.zip");
     let destination = temp.path().join("extracted");
@@ -188,12 +214,16 @@ fn zip_existing_hardlink_target_is_not_overwritten() {
     zip.write_all(b"archive overwrite").unwrap();
     zip.finish().unwrap();
 
-    assert!(extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 10, 100).is_err());
+    assert!(
+        extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 10, 100)
+            .await
+            .is_err()
+    );
     assert_eq!(fs::read(outside).unwrap(), b"preserve outside file");
 }
 
-#[test]
-fn tar_path_traversal_is_blocked() {
+#[tokio::test]
+async fn tar_path_traversal_is_blocked() {
     let temp = tempdir().unwrap();
     let tar_gz_path = temp.path().join("slip.tar.gz");
     let extract_dir = temp.path().join("extracted");
@@ -228,6 +258,7 @@ fn tar_path_traversal_is_blocked() {
         100,
         1_000_000,
     )
+    .await
     .expect_err("Should block path traversal in tar.gz");
 
     match err {
@@ -238,8 +269,8 @@ fn tar_path_traversal_is_blocked() {
     assert!(!temp.path().join("evil.txt").exists());
 }
 
-#[test]
-fn tar_escaping_symlink_is_blocked() {
+#[tokio::test]
+async fn tar_escaping_symlink_is_blocked() {
     let temp = tempdir().unwrap();
     let tar_gz_path = temp.path().join("symlink_escape.tar.gz");
     let extract_dir = temp.path().join("extracted");
@@ -265,6 +296,7 @@ fn tar_escaping_symlink_is_blocked() {
         100,
         1_000_000,
     )
+    .await
     .expect_err("Should block escaping symlink in tar");
 
     match err {
@@ -273,8 +305,8 @@ fn tar_escaping_symlink_is_blocked() {
     }
 }
 
-#[test]
-fn tar_escaping_hardlink_is_blocked() {
+#[tokio::test]
+async fn tar_escaping_hardlink_is_blocked() {
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("hardlink_escape.tar.gz");
     let destination = temp.path().join("extracted");
@@ -297,6 +329,7 @@ fn tar_escaping_hardlink_is_blocked() {
         100,
         1_000_000,
     )
+    .await
     .expect_err("escaping hardlink must be rejected");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -305,8 +338,8 @@ fn tar_escaping_hardlink_is_blocked() {
     assert!(!temp.path().join("outside").exists());
 }
 
-#[test]
-fn tar_symlink_parent_cannot_redirect_later_file_outside_destination() {
+#[tokio::test]
+async fn tar_symlink_parent_cannot_redirect_later_file_outside_destination() {
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("symlink_chain.tar.gz");
     let destination = temp.path().join("extracted");
@@ -330,6 +363,7 @@ fn tar_symlink_parent_cannot_redirect_later_file_outside_destination() {
     tar.into_inner().unwrap().finish().unwrap();
 
     let error = extract_archive(&archive_path, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
         .expect_err("archive link chain must not escape destination");
     assert!(
         matches!(
@@ -341,8 +375,8 @@ fn tar_symlink_parent_cannot_redirect_later_file_outside_destination() {
     assert!(!outside.join("payload").exists());
 }
 
-#[test]
-fn extraction_limits_are_enforced() {
+#[tokio::test]
+async fn extraction_limits_are_enforced() {
     let temp = tempdir().unwrap();
     let zip_path = temp.path().join("bomb.zip");
     let extract_dir = temp.path().join("extracted");
@@ -364,6 +398,7 @@ fn extraction_limits_are_enforced() {
         10,
         1_000, // Limit to 1 KB
     )
+    .await
     .expect_err("Should enforce max bytes");
 
     match err {
@@ -372,8 +407,8 @@ fn extraction_limits_are_enforced() {
     }
 }
 
-#[test]
-fn extraction_file_count_limit_is_enforced() {
+#[tokio::test]
+async fn extraction_file_count_limit_is_enforced() {
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("many.zip");
     let destination = temp.path().join("extracted");
@@ -387,6 +422,7 @@ fn extraction_file_count_limit_is_enforced() {
     zip.finish().unwrap();
 
     let error = extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 1, 100)
+        .await
         .expect_err("file count limit must be enforced");
     assert!(
         matches!(error, ExtractionError::TooManyFiles(1)),
@@ -394,8 +430,8 @@ fn extraction_file_count_limit_is_enforced() {
     );
 }
 
-#[test]
-fn tar_file_count_limit_is_enforced() {
+#[tokio::test]
+async fn tar_file_count_limit_is_enforced() {
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("many.tar.gz");
     let destination = temp.path().join("extracted");
@@ -413,6 +449,7 @@ fn tar_file_count_limit_is_enforced() {
     tar.into_inner().unwrap().finish().unwrap();
 
     let error = extract_archive(&archive_path, ArchiveFormat::TarGz, &destination, 1, 100)
+        .await
         .expect_err("tar file count limit must be enforced");
     assert!(
         matches!(error, ExtractionError::TooManyFiles(1)),
@@ -420,8 +457,8 @@ fn tar_file_count_limit_is_enforced() {
     );
 }
 
-#[test]
-fn tar_decompressed_size_limit_is_enforced() {
+#[tokio::test]
+async fn tar_decompressed_size_limit_is_enforced() {
     let temp = tempdir().unwrap();
     let archive_path = temp.path().join("large.tar.gz");
     let destination = temp.path().join("extracted");
@@ -438,6 +475,7 @@ fn tar_decompressed_size_limit_is_enforced() {
     tar.into_inner().unwrap().finish().unwrap();
 
     let error = extract_archive(&archive_path, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
         .expect_err("tar byte limit must be enforced");
     assert!(
         matches!(error, ExtractionError::TooLarge(1_000)),
@@ -445,9 +483,9 @@ fn tar_decompressed_size_limit_is_enforced() {
     );
 }
 
-#[test]
+#[tokio::test]
 #[ignore = "manual real-archive benchmark; set BERGAMOT_FFMPEG_ARCHIVE"]
-fn real_ffmpeg_archive_extraction_benchmark() {
+async fn real_ffmpeg_archive_extraction_benchmark() {
     let archive = std::env::var("BERGAMOT_FFMPEG_ARCHIVE").expect("archive path env var");
     let destination = tempdir().unwrap();
     extract_archive(
@@ -457,11 +495,12 @@ fn real_ffmpeg_archive_extraction_benchmark() {
         50_000,
         1_000_000_000,
     )
+    .await
     .expect("real FFmpeg archive extraction");
 }
 
-#[test]
-fn ffmpeg_configuration_parsing_and_license_detection() {
+#[tokio::test]
+async fn ffmpeg_configuration_parsing_and_license_detection() {
     let valid_gpl3 = r#"ffmpeg version 7.1 Copyright (c) 2000-2024 the FFmpeg developers
 built with gcc 14.2.0 (Rev1, Built by MSYS2 project)
 configuration: --enable-gpl --enable-version3 --enable-libx264 --enable-libmp3lame
@@ -489,20 +528,37 @@ libavutil      59. 39.100 / 59. 39.100"#;
     verification.command = version_command;
     verification.encoders_command = Some(shell_output("libx264\nlibmp3lame").1);
 
-    let meta = bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &verification)
-        .expect("Should verify valid GPLv3 build");
+    let meta = bergamot_core::managed_tools::verify_tool(
+        "ffmpeg",
+        &fake_ffmpeg,
+        &verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .expect("Should verify valid GPLv3 build");
     assert_eq!(meta.detected_license, "GPL-3.0");
 
     verification.command = shell_output(valid_gpl2).1;
-    let meta_gpl2 =
-        bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &verification)
-            .expect("Should verify valid GPLv2 build");
+    let meta_gpl2 = bergamot_core::managed_tools::verify_tool(
+        "ffmpeg",
+        &fake_ffmpeg,
+        &verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .expect("Should verify valid GPLv2 build");
     assert_eq!(meta_gpl2.detected_license, "GPL-2.0");
 
     // Test nonfree rejection
     verification.command = shell_output(nonfree).1;
-    let err = bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &verification)
-        .expect_err("Should reject nonfree build");
+    let err = bergamot_core::managed_tools::verify_tool(
+        "ffmpeg",
+        &fake_ffmpeg,
+        &verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .expect_err("Should reject nonfree build");
     match err {
         VerificationError::InvalidLicense(msg) => assert!(msg.contains("nonfree")),
         other => panic!("Expected InvalidLicense for nonfree, got {:?}", other),
@@ -510,16 +566,22 @@ libavutil      59. 39.100 / 59. 39.100"#;
 
     // Test missing gpl rejection
     verification.command = shell_output(no_gpl).1;
-    let err = bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &verification)
-        .expect_err("Should reject missing gpl build");
+    let err = bergamot_core::managed_tools::verify_tool(
+        "ffmpeg",
+        &fake_ffmpeg,
+        &verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .expect_err("Should reject missing gpl build");
     match err {
         VerificationError::InvalidLicense(msg) => assert!(msg.contains("--enable-gpl")),
         other => panic!("Expected InvalidLicense for missing gpl, got {:?}", other),
     }
 }
 
-#[test]
-fn resolver_precedence_and_managed_tools_fallback() {
+#[tokio::test]
+async fn resolver_precedence_and_managed_tools_fallback() {
     let temp = tempdir().unwrap();
     let managed_tools_dir = temp.path().join("managed_tools");
     let custom_tools_dir = temp.path().join("custom_tools");
@@ -566,7 +628,8 @@ fn resolver_precedence_and_managed_tools_fallback() {
         ..AppSettings::default()
     };
 
-    let resolved = resolve_dependency_detailed(&executor, &settings)
+    let resolved = resolve_dependency_detailed(&executor, &settings, &CancellationToken::new())
+        .await
         .unwrap()
         .expect("Should resolve managed tool");
     assert_eq!(resolved.path, managed_binary);
@@ -582,9 +645,11 @@ fn resolver_precedence_and_managed_tools_fallback() {
     }
 
     settings.custom_paths = vec![custom_tools_dir.to_string_lossy().into_owned()];
-    let resolved_custom = resolve_dependency_detailed(&executor, &settings)
-        .unwrap()
-        .expect("Should resolve custom path");
+    let resolved_custom =
+        resolve_dependency_detailed(&executor, &settings, &CancellationToken::new())
+            .await
+            .unwrap()
+            .expect("Should resolve custom path");
     assert_eq!(resolved_custom.path, custom_binary);
     assert_eq!(resolved_custom.source, ToolSource::System);
 
@@ -603,15 +668,17 @@ fn resolver_precedence_and_managed_tools_fallback() {
         "ffmpeg".to_string(),
         override_binary.to_string_lossy().into_owned(),
     );
-    let resolved_override = resolve_dependency_detailed(&executor, &settings)
-        .unwrap()
-        .expect("Should resolve override");
+    let resolved_override =
+        resolve_dependency_detailed(&executor, &settings, &CancellationToken::new())
+            .await
+            .unwrap()
+            .expect("Should resolve override");
     assert_eq!(resolved_override.path, override_binary);
     assert_eq!(resolved_override.source, ToolSource::System);
 }
 
-#[test]
-fn python3_manifest_and_verification() {
+#[tokio::test]
+async fn python3_manifest_and_verification() {
     let manifest = ManagedToolsManifest::load_embedded().expect("Manifest should parse");
     let python = manifest
         .tools
@@ -632,22 +699,34 @@ fn python3_manifest_and_verification() {
     verification.command = version_command;
     verification.test_script_args = Some(shell_output("OK").1);
 
-    let meta = bergamot_core::managed_tools::verify_tool("python3", &shell, &verification)
-        .expect("Should verify valid python3");
+    let meta = bergamot_core::managed_tools::verify_tool(
+        "python3",
+        &shell,
+        &verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .expect("Should verify valid python3");
     assert!(meta.detected_license.contains("PSF-2.0"));
     assert!(meta.version_output.contains("Python 3.12.16"));
 
     verification.test_script_args = Some(shell_exit(1));
-    let err = bergamot_core::managed_tools::verify_tool("python3", &shell, &verification)
-        .expect_err("Should fail when stdlib test script fails");
+    let err = bergamot_core::managed_tools::verify_tool(
+        "python3",
+        &shell,
+        &verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .expect_err("Should fail when stdlib test script fails");
     match err {
         bergamot_core::managed_tools::VerificationError::PythonScriptFailed(_) => {}
         other => panic!("Expected PythonScriptFailed, got {:?}", other),
     }
 }
 
-#[test]
-fn python3_managed_tool_resolution_and_stub_rejection() {
+#[tokio::test]
+async fn python3_managed_tool_resolution_and_stub_rejection() {
     let temp = tempdir().unwrap();
     let managed_tools_dir = temp.path().join("managed_tools");
     let custom_tools_dir = temp.path().join("custom_tools");
@@ -690,7 +769,8 @@ fn python3_managed_tool_resolution_and_stub_rejection() {
         ..AppSettings::default()
     };
 
-    let resolved = resolve_dependency_detailed(&executor, &settings)
+    let resolved = resolve_dependency_detailed(&executor, &settings, &CancellationToken::new())
+        .await
         .unwrap()
         .expect("Should resolve managed python3");
     assert_eq!(resolved.path, managed_binary);
@@ -710,11 +790,15 @@ fn python3_managed_tool_resolution_and_stub_rejection() {
         ..AppSettings::default()
     };
 
-    assert!(resolve_dependency_detailed(&executor, &settings_with_stub).is_err());
+    assert!(
+        resolve_dependency_detailed(&executor, &settings_with_stub, &CancellationToken::new(),)
+            .await
+            .is_err()
+    );
 }
 
-#[test]
-fn imagemagick_manifest_and_verification() {
+#[tokio::test]
+async fn imagemagick_manifest_and_verification() {
     let manifest = ManagedToolsManifest::load_embedded().expect("Manifest should parse");
     let magick = manifest
         .tools
@@ -746,13 +830,25 @@ fn imagemagick_manifest_and_verification() {
     verification.command = version_command;
     verification.formats_command = Some(shell_output("WEBP* rw+ WebP Image Format").1);
 
-    let meta = bergamot_core::managed_tools::verify_tool("magick", &shell, &verification)
-        .expect("Should verify valid magick with WEBP");
+    let meta = bergamot_core::managed_tools::verify_tool(
+        "magick",
+        &shell,
+        &verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .expect("Should verify valid magick with WEBP");
     assert!(meta.detected_license.contains("ImageMagick"));
 
     verification.formats_command = Some(shell_output("PNG* rw- PNG Format").1);
-    let err = bergamot_core::managed_tools::verify_tool("magick", &shell, &verification)
-        .expect_err("Should fail when WEBP is missing");
+    let err = bergamot_core::managed_tools::verify_tool(
+        "magick",
+        &shell,
+        &verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .expect_err("Should fail when WEBP is missing");
     match err {
         bergamot_core::managed_tools::VerificationError::MissingFormats(missing) => {
             assert_eq!(missing, vec!["WEBP"]);

@@ -84,13 +84,16 @@ where
     let target_binary = target_dir.join(&asset.binary_path);
 
     if target_binary.exists() {
-        if let Ok(metadata) =
-            verifier::verify_tool(tool_name, &target_binary, &tool_def.verification)
+        match verifier::verify_tool(tool_name, &target_binary, &tool_def.verification, cancel).await
         {
-            return Ok(InstallOutcome {
-                binary_path: target_binary,
-                metadata,
-            });
+            Ok(metadata) => {
+                return Ok(InstallOutcome {
+                    binary_path: target_binary,
+                    metadata,
+                });
+            }
+            Err(VerificationError::Cancelled) => return Err(InstallError::Cancelled),
+            Err(_) => {}
         }
     }
 
@@ -140,7 +143,9 @@ where
         &tmp_extract,
         DEFAULT_MAX_FILES,
         DEFAULT_MAX_DECOMPRESSED_BYTES,
-    )?;
+        cancel,
+    )
+    .await?;
 
     let _ = fs::remove_file(&tmp_archive);
 
@@ -154,7 +159,14 @@ where
         return Err(InstallError::BinaryNotFound(candidate_binary));
     }
 
-    let metadata = verifier::verify_tool(tool_name, &candidate_binary, &tool_def.verification)?;
+    let metadata =
+        match verifier::verify_tool(tool_name, &candidate_binary, &tool_def.verification, cancel)
+            .await
+        {
+            Ok(metadata) => metadata,
+            Err(VerificationError::Cancelled) => return Err(InstallError::Cancelled),
+            Err(error) => return Err(InstallError::Verification(error)),
+        };
 
     // 4. Atomic installation move
     if let Some(parent) = target_dir.parent() {

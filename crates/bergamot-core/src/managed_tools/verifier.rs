@@ -1,9 +1,15 @@
 use std::io;
 use std::path::Path;
-use std::process::Command;
 use thiserror::Error;
+use tokio::process::Command;
+use tokio_util::sync::CancellationToken;
+
+use crate::executors::process::run_command;
+use crate::executors::ExecutionError;
 
 use super::manifest::VerificationConfig;
+
+const VERIFICATION_TIMEOUT_SECONDS: u32 = 30;
 
 #[derive(Debug, Error)]
 pub enum VerificationError {
@@ -19,6 +25,10 @@ pub enum VerificationError {
     MissingFormats(Vec<String>),
     #[error("Python verification script failed: {0}")]
     PythonScriptFailed(String),
+    #[error("Verification was cancelled")]
+    Cancelled,
+    #[error("Verification command timed out after {0} seconds")]
+    TimedOut(u32),
 }
 
 #[derive(Clone, Debug)]
@@ -27,12 +37,13 @@ pub struct VerifiedToolMetadata {
     pub detected_license: String,
 }
 
-pub fn verify_tool(
+pub async fn verify_tool(
     tool_name: &str,
     binary_path: &Path,
     config: &VerificationConfig,
+    cancel: &CancellationToken,
 ) -> Result<VerifiedToolMetadata, VerificationError> {
-    let output = Command::new(binary_path).args(&config.command).output()?;
+    let output = run_verification_command(binary_path, &config.command, cancel).await?;
 
     if !output.status.success() {
         return Err(VerificationError::CommandFailed {
@@ -49,7 +60,7 @@ pub fn verify_tool(
         detected_license = license;
 
         if let Some(ref encoders_cmd) = config.encoders_command {
-            let enc_output = Command::new(binary_path).args(encoders_cmd).output()?;
+            let enc_output = run_verification_command(binary_path, encoders_cmd, cancel).await?;
             if !enc_output.status.success() {
                 return Err(VerificationError::CommandFailed {
                     code: enc_output.status.code(),
@@ -71,7 +82,7 @@ pub fn verify_tool(
         detected_license = "PSF-2.0 (with bundled third-party licenses)".to_string();
 
         if let Some(ref script_args) = config.test_script_args {
-            let test_output = Command::new(binary_path).args(script_args).output()?;
+            let test_output = run_verification_command(binary_path, script_args, cancel).await?;
             if !test_output.status.success() {
                 return Err(VerificationError::PythonScriptFailed(
                     String::from_utf8_lossy(&test_output.stderr).into_owned(),
@@ -82,7 +93,7 @@ pub fn verify_tool(
         detected_license = "ImageMagick (Apache-2.0 compatible)".to_string();
 
         if let Some(ref fmt_cmd) = config.formats_command {
-            let fmt_output = Command::new(binary_path).args(fmt_cmd).output()?;
+            let fmt_output = run_verification_command(binary_path, fmt_cmd, cancel).await?;
             if !fmt_output.status.success() {
                 return Err(VerificationError::CommandFailed {
                     code: fmt_output.status.code(),
@@ -106,6 +117,27 @@ pub fn verify_tool(
         version_output: stdout,
         detected_license,
     })
+}
+
+async fn run_verification_command(
+    binary_path: &Path,
+    args: &[String],
+    cancel: &CancellationToken,
+) -> Result<std::process::Output, VerificationError> {
+    let mut command = Command::new(binary_path);
+    command.args(args);
+    run_command(&mut command, VERIFICATION_TIMEOUT_SECONDS, cancel)
+        .await
+        .map_err(map_process_error)
+}
+
+fn map_process_error(error: ExecutionError) -> VerificationError {
+    match error {
+        ExecutionError::Io(error) => VerificationError::Io(error),
+        ExecutionError::Cancelled => VerificationError::Cancelled,
+        ExecutionError::TimedOut(seconds) => VerificationError::TimedOut(seconds),
+        other => VerificationError::Io(io::Error::other(other.to_string())),
+    }
 }
 
 fn parse_ffmpeg_configuration(version_output: &str) -> Result<(String, String), VerificationError> {

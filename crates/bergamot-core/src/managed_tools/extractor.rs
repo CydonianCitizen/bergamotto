@@ -4,11 +4,21 @@ use std::fs::{self, File};
 use std::io::{self, BufReader, Read};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
+#[cfg(unix)]
+use tokio::process::Command;
+use tokio_util::sync::CancellationToken;
+
+#[cfg(unix)]
+use crate::executors::process::run_command;
+#[cfg(unix)]
+use crate::executors::ExecutionError;
 
 use super::manifest::ArchiveFormat;
 
 pub const DEFAULT_MAX_FILES: usize = 50_000;
 pub const DEFAULT_MAX_DECOMPRESSED_BYTES: u64 = 1_000_000_000; // 1 GB
+/// Maximum time allowed for a self-extracting AppImage to unpack its contents.
+pub const APPIMAGE_TIMEOUT_SECONDS: u32 = 300;
 
 #[derive(Debug, Error)]
 pub enum ExtractionError {
@@ -30,9 +40,51 @@ pub enum ExtractionError {
     TooLarge(u64),
     #[error("AppImage extraction failed: {0}")]
     AppImageFailed(String),
+    #[error("Extraction was cancelled")]
+    Cancelled,
+    #[error("AppImage extraction timed out after {0} seconds")]
+    AppImageTimedOut(u32),
 }
 
-pub fn extract_archive(
+pub async fn extract_archive(
+    archive_path: &Path,
+    format: ArchiveFormat,
+    destination: &Path,
+    max_files: usize,
+    max_decompressed_bytes: u64,
+    cancel: &CancellationToken,
+) -> Result<(), ExtractionError> {
+    if cancel.is_cancelled() {
+        return Err(ExtractionError::Cancelled);
+    }
+
+    if format == ArchiveFormat::AppImage {
+        fs::create_dir_all(destination)?;
+        let canonical_dest = destination.canonicalize()?;
+        return extract_appimage(archive_path, &canonical_dest, cancel).await;
+    }
+
+    let archive_path = archive_path.to_path_buf();
+    let destination = destination.to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        extract_archive_blocking(
+            &archive_path,
+            format,
+            &destination,
+            max_files,
+            max_decompressed_bytes,
+        )
+    })
+    .await
+    .map_err(io::Error::other)??;
+
+    if cancel.is_cancelled() {
+        return Err(ExtractionError::Cancelled);
+    }
+    Ok(())
+}
+
+fn extract_archive_blocking(
     archive_path: &Path,
     format: ArchiveFormat,
     destination: &Path,
@@ -67,7 +119,7 @@ pub fn extract_archive(
             max_files,
             max_decompressed_bytes,
         ),
-        ArchiveFormat::AppImage => extract_appimage(archive_path, &canonical_dest),
+        ArchiveFormat::AppImage => unreachable!("AppImage extraction uses the async runner"),
     }
 }
 
@@ -458,29 +510,45 @@ fn extract_7z(
     .map_err(|e| ExtractionError::SevenZ(e.to_string()))
 }
 
-fn extract_appimage(archive_path: &Path, dest: &Path) -> Result<(), ExtractionError> {
+async fn extract_appimage(
+    archive_path: &Path,
+    dest: &Path,
+    cancel: &CancellationToken,
+) -> Result<(), ExtractionError> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let _ = fs::set_permissions(archive_path, fs::Permissions::from_mode(0o755));
-        let status = std::process::Command::new(archive_path)
-            .arg("--appimage-extract")
-            .current_dir(dest)
-            .status()?;
+        let mut command = Command::new(archive_path);
+        command.arg("--appimage-extract").current_dir(dest);
+        let output = run_command(&mut command, APPIMAGE_TIMEOUT_SECONDS, cancel)
+            .await
+            .map_err(map_appimage_process_error)?;
 
-        if !status.success() {
+        if !output.status.success() {
             return Err(ExtractionError::AppImageFailed(format!(
                 "AppImage --appimage-extract exited with status {:?}",
-                status.code()
+                output.status.code()
             )));
         }
         Ok(())
     }
     #[cfg(not(unix))]
     {
+        let _ = (archive_path, dest, cancel);
         Err(ExtractionError::AppImageFailed(
             "AppImage extraction is only supported on Unix".into(),
         ))
+    }
+}
+
+#[cfg(unix)]
+fn map_appimage_process_error(error: ExecutionError) -> ExtractionError {
+    match error {
+        ExecutionError::Io(error) => ExtractionError::Io(error),
+        ExecutionError::Cancelled => ExtractionError::Cancelled,
+        ExecutionError::TimedOut(seconds) => ExtractionError::AppImageTimedOut(seconds),
+        other => ExtractionError::AppImageFailed(other.to_string()),
     }
 }
 

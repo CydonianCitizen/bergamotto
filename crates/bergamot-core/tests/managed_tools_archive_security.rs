@@ -1,13 +1,34 @@
 #![cfg(unix)]
 
-use bergamot_core::managed_tools::extractor::{extract_archive, ExtractionError};
+use bergamot_core::managed_tools::extractor::{
+    extract_archive as extract_archive_async, ExtractionError,
+};
 use bergamot_core::managed_tools::manifest::ArchiveFormat;
 #[cfg(target_os = "linux")]
 use bergamot_core::managed_tools::manifest::ManagedToolsManifest;
+use bergamot_core::CancellationToken;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
+
+async fn extract_archive(
+    archive_path: &Path,
+    format: ArchiveFormat,
+    destination: &Path,
+    max_files: usize,
+    max_decompressed_bytes: u64,
+) -> Result<(), ExtractionError> {
+    extract_archive_async(
+        archive_path,
+        format,
+        destination,
+        max_files,
+        max_decompressed_bytes,
+        &CancellationToken::new(),
+    )
+    .await
+}
 
 #[cfg(target_os = "linux")]
 fn assert_normalized_tree(path: &Path) {
@@ -191,8 +212,8 @@ fn mode(path: &Path) -> u32 {
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_normalizes_regular_modes_without_chmod_through_symlinks() {
+#[tokio::test]
+async fn tar_normalizes_regular_modes_without_chmod_through_symlinks() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("modes.tar.gz");
     let destination = temp.path().join("extracted");
@@ -216,7 +237,9 @@ fn tar_normalizes_regular_modes_without_chmod_through_symlinks() {
         ],
     );
 
-    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000).unwrap();
+    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
+        .unwrap();
 
     assert_eq!(mode(&destination.join("target")), 0o755);
     assert_eq!(mode(&destination.join("data")), 0o644);
@@ -230,8 +253,8 @@ fn tar_normalizes_regular_modes_without_chmod_through_symlinks() {
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_strips_special_bits_and_group_other_writes_from_files() {
+#[tokio::test]
+async fn tar_strips_special_bits_and_group_other_writes_from_files() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("special-modes.tar.gz");
     let destination = temp.path().join("extracted");
@@ -252,15 +275,17 @@ fn tar_strips_special_bits_and_group_other_writes_from_files() {
     );
     assert_tar_entry_modes(&archive, &[("executable", 0o7777), ("ordinary", 0o7666)]);
 
-    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000).unwrap();
+    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
+        .unwrap();
 
     assert_eq!(mode(&destination.join("executable")), 0o755);
     assert_eq!(mode(&destination.join("ordinary")), 0o644);
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_normalizes_created_directories_and_preserves_existing_root_permissions() {
+#[tokio::test]
+async fn tar_normalizes_created_directories_and_preserves_existing_root_permissions() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("directories.tar.gz");
     let destination = temp.path().join("extracted");
@@ -286,7 +311,9 @@ fn tar_normalizes_created_directories_and_preserves_existing_root_permissions() 
         ],
     );
 
-    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000).unwrap();
+    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
+        .unwrap();
 
     assert_eq!(mode(&destination), 0o700);
     assert_eq!(mode(&destination.join("nested")), 0o755);
@@ -294,8 +321,8 @@ fn tar_normalizes_created_directories_and_preserves_existing_root_permissions() 
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_rejects_non_directory_entries_at_the_extraction_root() {
+#[tokio::test]
+async fn tar_rejects_non_directory_entries_at_the_extraction_root() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("root-file.tar.gz");
     let destination = temp.path().join("extracted");
@@ -309,6 +336,7 @@ fn tar_rejects_non_directory_entries_at_the_extraction_root() {
     );
 
     let error = extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
         .expect_err("non-directory entries at the extraction root must be rejected");
     assert!(
         matches!(error, ExtractionError::PathTraversal(_)),
@@ -317,8 +345,8 @@ fn tar_rejects_non_directory_entries_at_the_extraction_root() {
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_rejects_chained_symlink_escape_without_touching_outside_target() {
+#[tokio::test]
+async fn tar_rejects_chained_symlink_escape_without_touching_outside_target() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("escape.tar.gz");
     let destination = temp.path().join("extracted");
@@ -342,6 +370,7 @@ fn tar_rejects_chained_symlink_escape_without_touching_outside_target() {
     );
 
     let error = extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
         .expect_err("a symlink chain that climbs above the root must be rejected");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -352,8 +381,8 @@ fn tar_rejects_chained_symlink_escape_without_touching_outside_target() {
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_accepts_forward_confined_symlink_chains_with_parent_components() {
+#[tokio::test]
+async fn tar_accepts_forward_confined_symlink_chains_with_parent_components() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("forward-links.tar.gz");
     let destination = temp.path().join("extracted");
@@ -376,15 +405,17 @@ fn tar_accepts_forward_confined_symlink_chains_with_parent_components() {
         ],
     );
 
-    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000).unwrap();
+    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
+        .unwrap();
 
     assert_eq!(fs::read(destination.join("sub/first")).unwrap(), b"inside");
     assert_eq!(mode(&destination.join("target")), 0o755);
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_rejects_symlink_cycles() {
+#[tokio::test]
+async fn tar_rejects_symlink_cycles() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("cycle.tar.gz");
     let destination = temp.path().join("extracted");
@@ -403,6 +434,7 @@ fn tar_rejects_symlink_cycles() {
     );
 
     let error = extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
         .expect_err("symlink cycles must be rejected");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -411,8 +443,8 @@ fn tar_rejects_symlink_cycles() {
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_rejects_symlink_chains_beyond_the_expansion_limit() {
+#[tokio::test]
+async fn tar_rejects_symlink_chains_beyond_the_expansion_limit() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("long-chain.tar.gz");
     let destination = temp.path().join("extracted");
@@ -438,6 +470,7 @@ fn tar_rejects_symlink_chains_beyond_the_expansion_limit() {
     tar.into_inner().unwrap().finish().unwrap();
 
     let error = extract_archive(&archive, ArchiveFormat::TarGz, &destination, 100, 1_000)
+        .await
         .expect_err("excessively long symlink chains must be bounded");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -446,8 +479,8 @@ fn tar_rejects_symlink_chains_beyond_the_expansion_limit() {
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_bounds_repeated_symlink_expansions_within_one_target() {
+#[tokio::test]
+async fn tar_bounds_repeated_symlink_expansions_within_one_target() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("repeated-expansions.tar.gz");
     let destination = temp.path().join("extracted");
@@ -467,6 +500,7 @@ fn tar_bounds_repeated_symlink_expansions_within_one_target() {
     );
 
     let error = extract_archive(&archive, ArchiveFormat::TarGz, &destination, 100, 1_000)
+        .await
         .expect_err("repeated symlink expansions must consume a shared bound");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -475,8 +509,8 @@ fn tar_bounds_repeated_symlink_expansions_within_one_target() {
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_does_not_chmod_a_hardlink_to_an_outside_inode() {
+#[tokio::test]
+async fn tar_does_not_chmod_a_hardlink_to_an_outside_inode() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("hardlink.tar.gz");
     let destination = temp.path().join("extracted");
@@ -495,15 +529,17 @@ fn tar_does_not_chmod_a_hardlink_to_an_outside_inode() {
         }],
     );
 
-    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000).unwrap();
+    extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
+        .unwrap();
 
     assert_eq!(fs::read(&outside).unwrap(), b"outside contents");
     assert_eq!(mode(&outside), 0o600);
 }
 
 #[cfg(unix)]
-#[test]
-fn tar_hardlink_target_resolution_honors_symlink_parent_before_parent_dir() {
+#[tokio::test]
+async fn tar_hardlink_target_resolution_honors_symlink_parent_before_parent_dir() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("hardlink-escape.tar.gz");
     let destination = temp.path().join("extracted");
@@ -527,6 +563,7 @@ fn tar_hardlink_target_resolution_honors_symlink_parent_before_parent_dir() {
     );
 
     let error = extract_archive(&archive, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .await
         .expect_err("hardlink targets must resolve symlink parents before '..'");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -537,8 +574,8 @@ fn tar_hardlink_target_resolution_honors_symlink_parent_before_parent_dir() {
 }
 
 #[cfg(unix)]
-#[test]
-fn zip_normalizes_regular_modes_and_accepts_confined_forward_symlinks() {
+#[tokio::test]
+async fn zip_normalizes_regular_modes_and_accepts_confined_forward_symlinks() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("modes.zip");
     let destination = temp.path().join("extracted");
@@ -570,7 +607,9 @@ fn zip_normalizes_regular_modes_and_accepts_confined_forward_symlinks() {
     zip.write_all(b"ordinary").unwrap();
     zip.finish().unwrap();
 
-    extract_archive(&archive, ArchiveFormat::Zip, &destination, 10, 1_000).unwrap();
+    extract_archive(&archive, ArchiveFormat::Zip, &destination, 10, 1_000)
+        .await
+        .unwrap();
 
     assert_eq!(
         fs::read(destination.join("sub/first")).unwrap(),
@@ -582,8 +621,8 @@ fn zip_normalizes_regular_modes_and_accepts_confined_forward_symlinks() {
 }
 
 #[cfg(unix)]
-#[test]
-fn zip_strips_special_bits_and_group_other_writes_from_files() {
+#[tokio::test]
+async fn zip_strips_special_bits_and_group_other_writes_from_files() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("special-modes.zip");
     let destination = temp.path().join("extracted");
@@ -604,15 +643,17 @@ fn zip_strips_special_bits_and_group_other_writes_from_files() {
     zip.finish().unwrap();
     patch_zip_permissions(&archive, &[("executable", 0o7777), ("ordinary", 0o7666)]);
 
-    extract_archive(&archive, ArchiveFormat::Zip, &destination, 10, 1_000).unwrap();
+    extract_archive(&archive, ArchiveFormat::Zip, &destination, 10, 1_000)
+        .await
+        .unwrap();
 
     assert_eq!(mode(&destination.join("executable")), 0o755);
     assert_eq!(mode(&destination.join("ordinary")), 0o644);
 }
 
 #[cfg(unix)]
-#[test]
-fn zip_normalizes_created_directories_without_widening_existing_root() {
+#[tokio::test]
+async fn zip_normalizes_created_directories_without_widening_existing_root() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("directories.zip");
     let destination = temp.path().join("extracted");
@@ -652,7 +693,9 @@ fn zip_normalizes_created_directories_without_widening_existing_root() {
     zip.write_all(b"keep existing directory mode").unwrap();
     zip.finish().unwrap();
 
-    extract_archive(&archive, ArchiveFormat::Zip, &destination, 10, 1_000).unwrap();
+    extract_archive(&archive, ArchiveFormat::Zip, &destination, 10, 1_000)
+        .await
+        .unwrap();
 
     assert_eq!(mode(&destination), 0o700);
     assert_eq!(mode(&destination.join("nested")), 0o755);
@@ -661,8 +704,8 @@ fn zip_normalizes_created_directories_without_widening_existing_root() {
 }
 
 #[cfg(unix)]
-#[test]
-fn zip_rejects_chained_symlink_escape_without_touching_outside_target() {
+#[tokio::test]
+async fn zip_rejects_chained_symlink_escape_without_touching_outside_target() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("escape.zip");
     let destination = temp.path().join("extracted");
@@ -684,6 +727,7 @@ fn zip_rejects_chained_symlink_escape_without_touching_outside_target() {
     zip.finish().unwrap();
 
     let error = extract_archive(&archive, ArchiveFormat::Zip, &destination, 10, 1_000)
+        .await
         .expect_err("a symlink chain that climbs above the root must be rejected");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -694,8 +738,8 @@ fn zip_rejects_chained_symlink_escape_without_touching_outside_target() {
 }
 
 #[cfg(unix)]
-#[test]
-fn zip_rejects_symlink_cycles() {
+#[tokio::test]
+async fn zip_rejects_symlink_cycles() {
     let temp = tempdir().unwrap();
     let archive = temp.path().join("cycle.zip");
     let destination = temp.path().join("extracted");
@@ -712,6 +756,7 @@ fn zip_rejects_symlink_cycles() {
     zip.finish().unwrap();
 
     let error = extract_archive(&archive, ArchiveFormat::Zip, &destination, 10, 1_000)
+        .await
         .expect_err("symlink cycles must be rejected");
     assert!(
         matches!(error, ExtractionError::LinkEscapes(_)),
@@ -766,9 +811,9 @@ async fn live_python_install_runs_and_has_normalized_archive_permissions() {
 }
 
 #[cfg(target_os = "linux")]
-#[test]
+#[tokio::test]
 #[ignore = "requires BERGAMOT_PYTHON_ARCHIVE to point at the pinned production archive"]
-fn cached_python_archive_extracts_and_runs_with_normalized_permissions() {
+async fn cached_python_archive_extracts_and_runs_with_normalized_permissions() {
     use bergamot_core::managed_tools::verify_tool;
     use sha2::Digest;
 
@@ -788,9 +833,17 @@ fn cached_python_archive_extracts_and_runs_with_normalized_permissions() {
         bergamot_core::managed_tools::extractor::DEFAULT_MAX_FILES,
         bergamot_core::managed_tools::extractor::DEFAULT_MAX_DECOMPRESSED_BYTES,
     )
+    .await
     .unwrap();
     let binary = extracted.path().join(&asset.binary_path);
-    verify_tool("python3", &binary, &python.verification).unwrap();
+    verify_tool(
+        "python3",
+        &binary,
+        &python.verification,
+        &CancellationToken::new(),
+    )
+    .await
+    .unwrap();
     assert_python_runs(&binary);
     assert_normalized_tree(extracted.path());
 

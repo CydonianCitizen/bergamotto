@@ -38,10 +38,13 @@ async fn executable_overrides_are_shared_by_detection_and_execution() {
         .into(),
         ..Default::default()
     };
-    assert!(process::resolve_dependency(&executor, &settings)
-        .unwrap()
-        .unwrap()
-        .is_absolute());
+    assert!(
+        process::resolve_dependency(&executor, &settings, &CancellationToken::new())
+            .await
+            .unwrap()
+            .unwrap()
+            .is_absolute()
+    );
     let output = process::execute_with_settings(
         &executor,
         std::slice::from_ref(&path),
@@ -52,7 +55,13 @@ async fn executable_overrides_are_shared_by_detection_and_execution() {
     .await
     .unwrap();
     assert!(String::from_utf8_lossy(&output.stdout).contains(FILE_NAME));
-    assert!(process::resolve_dependency(&executor, &AppSettings::default()).is_err());
+    assert!(process::resolve_dependency(
+        &executor,
+        &AppSettings::default(),
+        &CancellationToken::new(),
+    )
+    .await
+    .is_err());
 }
 
 #[tokio::test]
@@ -75,7 +84,9 @@ async fn custom_search_paths_find_tools_and_are_inherited_by_the_child() {
         ..Default::default()
     };
     assert_eq!(
-        process::resolve_dependency(&executor, &settings).unwrap(),
+        process::resolve_dependency(&executor, &settings, &CancellationToken::new())
+            .await
+            .unwrap(),
         Some(executable)
     );
     let output = process::execute_with_settings(

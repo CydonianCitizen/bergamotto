@@ -142,38 +142,37 @@ pub async fn check_action_dependencies(
 ) -> Result<BTreeMap<String, ToolStatus>, String> {
     let actions = actions.registry.list_actions();
     let settings = settings.snapshot();
-    tauri::async_runtime::spawn_blocking(move || {
-        actions
-            .into_iter()
-            .filter_map(|action| {
-                let tool = match &action.executor {
-                    ExecutorConfig::Process { program, .. } => program.clone(),
-                    ExecutorConfig::Script { interpreter, .. } => interpreter.clone(),
-                    ExecutorConfig::Webhook { .. } => return None,
-                };
-                let (path, source, message) =
-                    match bergamot_core::executors::process::resolve_dependency_detailed(
-                        &action.executor,
-                        &settings,
-                    ) {
-                        Ok(Some(dep)) => (Some(dep.path), dep.source, None),
-                        Ok(None) => (None, ToolSource::System, None),
-                        Err(error) => (None, ToolSource::Missing, Some(error.to_string())),
-                    };
-                Some((
-                    action.id,
-                    ToolStatus {
-                        tool,
-                        path,
-                        message,
-                        source,
-                    },
-                ))
-            })
-            .collect()
-    })
-    .await
-    .map_err(|_| "Could not check action dependencies".to_owned())
+    let mut statuses = BTreeMap::new();
+    for action in actions {
+        let tool = match &action.executor {
+            ExecutorConfig::Process { program, .. } => program.clone(),
+            ExecutorConfig::Script { interpreter, .. } => interpreter.clone(),
+            ExecutorConfig::Webhook { .. } => continue,
+        };
+        let cancel = CancellationToken::new();
+        let (path, source, message) =
+            match bergamot_core::executors::process::resolve_dependency_detailed(
+                &action.executor,
+                &settings,
+                &cancel,
+            )
+            .await
+            {
+                Ok(Some(dep)) => (Some(dep.path), dep.source, None),
+                Ok(None) => (None, ToolSource::System, None),
+                Err(error) => (None, ToolSource::Missing, Some(error.to_string())),
+            };
+        statuses.insert(
+            action.id,
+            ToolStatus {
+                tool,
+                path,
+                message,
+                source,
+            },
+        );
+    }
+    Ok(statuses)
 }
 
 fn dir_size(path: &std::path::Path) -> u64 {
@@ -237,10 +236,14 @@ pub async fn get_managed_tools_status(
             };
             let mut sys_settings = settings.clone();
             sys_settings.managed_tools_dir = None;
+            let cancel = CancellationToken::new();
             if let Ok(Some(dep)) = bergamot_core::executors::process::resolve_dependency_detailed(
                 &executor,
                 &sys_settings,
-            ) {
+                &cancel,
+            )
+            .await
+            {
                 status = ToolSource::System;
                 installed_path = Some(dep.path.to_string_lossy().into_owned());
             }
