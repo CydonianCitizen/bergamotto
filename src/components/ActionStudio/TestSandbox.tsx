@@ -32,7 +32,7 @@ export function TestSandbox({
       const selected = await open({
         multiple: false,
         directory: false,
-        title: 'Choose sample file for dry run',
+        title: 'Choose original file for action test',
       });
       if (typeof selected === 'string') {
         setSamplePath(selected);
@@ -91,8 +91,11 @@ export function TestSandbox({
   return (
     <div className="test-sandbox-card">
       <div className="sandbox-header">
-        <h4>Dry-Run & Action Test Sandbox</h4>
-        <p>Test this action on a sample file and inspect the outcome immediately.</p>
+        <h4>Action test</h4>
+        <p>
+          Runs the saved action on the selected original file. The action can modify that file or
+          perform its normal side effects; this run is not isolated.
+        </p>
       </div>
 
       {toolName && (
@@ -126,7 +129,7 @@ export function TestSandbox({
 
       <div className="sandbox-controls">
         <div className="sample-file-field">
-          <label>Sample input file:</label>
+          <label>Original file to use:</label>
           <div className="file-input-row">
             <input
               type="text"
