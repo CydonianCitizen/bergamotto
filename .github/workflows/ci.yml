@@ -37,6 +37,24 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
+  dependency-advisories:
+    name: Dependency Advisories
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-deny
+        run: cargo install --locked --version 0.20.2 cargo-deny
+
+      - name: Check dependency advisories
+        run: cargo deny --locked check advisories
+
   cross-os-check-and-test:
     name: Check & Test (${{ matrix.name }})
     needs: lint-and-frontend

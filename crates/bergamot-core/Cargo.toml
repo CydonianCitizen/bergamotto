@@ -17,8 +17,8 @@ flate2 = "1"
 lzma-rs = "0.3"
 sha2 = "0.10"
 tar = "0.4"
-zip = { version = "2.2", default-features = false, features = ["deflate"] }
-sevenz-rust = { version = "0.6", default-features = false }
+zip = { version = "9.6.0", default-features = false, features = ["deflate"] }
+sevenz-rust2 = { version = "0.25.0", default-features = false }
 tempfile = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["fs", "io-util", "macros", "process", "rt", "sync", "time"] }
@@ -36,3 +36,4 @@ keyring = { version = "3.6", features = ["async-secret-service", "tokio", "crypt
 
 [dev-dependencies]
 tokio = { version = "1", features = ["net"] }
+sevenz-rust2 = { version = "0.25.0", default-features = false, features = ["compress"] }

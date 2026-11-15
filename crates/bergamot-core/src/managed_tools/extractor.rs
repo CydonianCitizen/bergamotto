@@ -147,7 +147,7 @@ fn extract_zip(
         let unix_mode = entry.unix_mode();
         let enclosed = entry
             .enclosed_name()
-            .ok_or_else(|| ExtractionError::PathTraversal(PathBuf::from(entry.name())))?;
+            .ok_or_else(|| ExtractionError::PathTraversal(zip_entry_path_for_error(&entry)))?;
         let relative = relative_archive_path(&enclosed)?;
         if entry.is_dir() || unix_mode.is_some_and(|mode| mode & 0o170000 == 0o040000) {
             directories.insert(relative.clone());
@@ -183,7 +183,7 @@ fn extract_zip(
         let is_symlink = unix_mode.is_some_and(|mode| mode & 0o170000 == 0o120000);
         let enclosed = entry
             .enclosed_name()
-            .ok_or_else(|| ExtractionError::PathTraversal(PathBuf::from(entry.name())))?
+            .ok_or_else(|| ExtractionError::PathTraversal(zip_entry_path_for_error(&entry)))?
             .to_path_buf();
 
         let relative = relative_archive_path(&enclosed)?;
@@ -465,49 +465,83 @@ fn extract_7z(
     max_files: usize,
     max_bytes: u64,
 ) -> Result<(), ExtractionError> {
+    let file = File::open(archive_path)?;
+    let mut archive = sevenz_rust2::ArchiveReader::new(file, sevenz_rust2::Password::empty())
+        .map_err(|error| ExtractionError::SevenZ(error.to_string()))?;
     let mut total_files = 0;
     let mut total_bytes: u64 = 0;
+    let mut callback_error = None;
 
-    sevenz_rust::decompress_file_with_extract_fn(archive_path, dest, |entry, reader, out_dir| {
-        total_files += 1;
-        if total_files > max_files {
-            return Err(sevenz_rust::Error::other(format!(
-                "Too many files in archive (limit {max_files})"
-            )));
-        }
-
-        let path = PathBuf::from(entry.name());
-        if path.is_absolute()
-            || path
-                .components()
-                .any(|c| c == std::path::Component::ParentDir)
-        {
-            return Err(sevenz_rust::Error::other(format!(
-                "Path traversal in 7z: {:?}",
-                entry.name()
-            )));
-        }
-
-        let outpath = out_dir.join(&path);
-        if entry.is_directory() {
-            fs::create_dir_all(&outpath)?;
-        } else {
-            if let Some(parent) = outpath.parent() {
-                fs::create_dir_all(parent)?;
+    archive
+        .for_each_entries(|entry, reader| {
+            total_files += 1;
+            if total_files > max_files {
+                callback_error = Some(ExtractionError::TooManyFiles(max_files));
+                return Err(io::Error::other("too many files in 7z archive").into());
             }
-            let mut outfile = File::create(&outpath)?;
-            let remaining = max_bytes.saturating_sub(total_bytes);
-            let written = io::copy(&mut reader.take(remaining.saturating_add(1)), &mut outfile)?;
-            total_bytes += written;
-            if total_bytes > max_bytes {
-                return Err(sevenz_rust::Error::other(format!(
-                    "Archive too large (limit {max_bytes} bytes)"
-                )));
+
+            let relative = match relative_7z_archive_path(entry.name()) {
+                Ok(relative) => relative,
+                Err(error) => {
+                    callback_error = Some(error);
+                    return Err(io::Error::other("unsafe path in 7z archive").into());
+                }
+            };
+            if relative.as_os_str().is_empty() {
+                if entry.is_directory() {
+                    return Ok(true);
+                }
+                callback_error = Some(ExtractionError::PathTraversal(PathBuf::from(entry.name())));
+                return Err(io::Error::other("empty file path in 7z archive").into());
             }
-        }
-        Ok(true)
-    })
-    .map_err(|e| ExtractionError::SevenZ(e.to_string()))
+
+            let outpath = dest.join(&relative);
+            let is_dir = entry.is_directory();
+            let existed = path_exists(&outpath)?;
+            if let Err(error) = ensure_safe_output_path(dest, &outpath, is_dir) {
+                callback_error = Some(error);
+                return Err(io::Error::other("unsafe output path in 7z archive").into());
+            }
+
+            if is_dir {
+                if !existed {
+                    create_extraction_dir(&outpath)?;
+                }
+            } else {
+                let mut outfile = fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&outpath)?;
+                let remaining = max_bytes.saturating_sub(total_bytes);
+                let written =
+                    io::copy(&mut reader.take(remaining.saturating_add(1)), &mut outfile)?;
+                total_bytes = total_bytes.saturating_add(written);
+                if total_bytes > max_bytes {
+                    callback_error = Some(ExtractionError::TooLarge(max_bytes));
+                    return Err(io::Error::other("7z archive exceeds expanded-byte limit").into());
+                }
+            }
+            Ok(true)
+        })
+        .map_err(|error| {
+            callback_error.unwrap_or_else(|| ExtractionError::SevenZ(error.to_string()))
+        })
+}
+
+fn relative_7z_archive_path(name: &str) -> Result<PathBuf, ExtractionError> {
+    let normalized = name.replace('\\', "/");
+    let bytes = normalized.as_bytes();
+    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+        return Err(ExtractionError::PathTraversal(PathBuf::from(name)));
+    }
+    relative_archive_path(Path::new(&normalized))
+}
+
+fn zip_entry_path_for_error<R: Read + ?Sized>(entry: &zip::read::ZipFile<'_, R>) -> PathBuf {
+    entry
+        .name()
+        .map(|name| PathBuf::from(name.into_owned()))
+        .unwrap_or_else(|_| PathBuf::from(String::from_utf8_lossy(entry.name_raw()).into_owned()))
 }
 
 async fn extract_appimage(

@@ -198,9 +198,7 @@ fn patch_zip_permissions(archive_path: &Path, changes: &[(&str, u32)]) {
     let mut archive = zip::ZipArchive::new(File::open(archive_path).unwrap()).unwrap();
     for (name, permissions) in changes {
         let entry = archive.by_name(name).unwrap();
-        let mode = entry
-            .unix_mode()
-            .expect("patched Unix mode must be readable");
+        let mode = entry.external_attributes() >> 16;
         assert_eq!(mode & 0o7777, *permissions, "fixture mode for {name}");
     }
 }
