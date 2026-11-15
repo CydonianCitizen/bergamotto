@@ -1,0 +1,132 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--workspace"
+  ],
+  "runs": 20,
+  "failures": 0,
+  "inherited_RUST_TEST_THREADS_removed": null,
+  "results": [
+    {
+      "run": 1,
+      "exit_code": 0,
+      "elapsed_seconds": 6.42,
+      "log": "/tmp/bergamot-parallel-workspace/run-01.txt"
+    },
+    {
+      "run": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 5.59,
+      "log": "/tmp/bergamot-parallel-workspace/run-02.txt"
+    },
+    {
+      "run": 3,
+      "exit_code": 0,
+      "elapsed_seconds": 5.6,
+      "log": "/tmp/bergamot-parallel-workspace/run-03.txt"
+    },
+    {
+      "run": 4,
+      "exit_code": 0,
+      "elapsed_seconds": 5.71,
+      "log": "/tmp/bergamot-parallel-workspace/run-04.txt"
+    },
+    {
+      "run": 5,
+      "exit_code": 0,
+      "elapsed_seconds": 5.67,
+      "log": "/tmp/bergamot-parallel-workspace/run-05.txt"
+    },
+    {
+      "run": 6,
+      "exit_code": 0,
+      "elapsed_seconds": 5.69,
+      "log": "/tmp/bergamot-parallel-workspace/run-06.txt"
+    },
+    {
+      "run": 7,
+      "exit_code": 0,
+      "elapsed_seconds": 5.63,
+      "log": "/tmp/bergamot-parallel-workspace/run-07.txt"
+    },
+    {
+      "run": 8,
+      "exit_code": 0,
+      "elapsed_seconds": 5.65,
+      "log": "/tmp/bergamot-parallel-workspace/run-08.txt"
+    },
+    {
+      "run": 9,
+      "exit_code": 0,
+      "elapsed_seconds": 5.65,
+      "log": "/tmp/bergamot-parallel-workspace/run-09.txt"
+    },
+    {
+      "run": 10,
+      "exit_code": 0,
+      "elapsed_seconds": 5.68,
+      "log": "/tmp/bergamot-parallel-workspace/run-10.txt"
+    },
+    {
+      "run": 11,
+      "exit_code": 0,
+      "elapsed_seconds": 5.63,
+      "log": "/tmp/bergamot-parallel-workspace/run-11.txt"
+    },
+    {
+      "run": 12,
+      "exit_code": 0,
+      "elapsed_seconds": 5.71,
+      "log": "/tmp/bergamot-parallel-workspace/run-12.txt"
+    },
+    {
+      "run": 13,
+      "exit_code": 0,
+      "elapsed_seconds": 5.63,
+      "log": "/tmp/bergamot-parallel-workspace/run-13.txt"
+    },
+    {
+      "run": 14,
+      "exit_code": 0,
+      "elapsed_seconds": 5.59,
+      "log": "/tmp/bergamot-parallel-workspace/run-14.txt"
+    },
+    {
+      "run": 15,
+      "exit_code": 0,
+      "elapsed_seconds": 5.61,
+      "log": "/tmp/bergamot-parallel-workspace/run-15.txt"
+    },
+    {
+      "run": 16,
+      "exit_code": 0,
+      "elapsed_seconds": 5.73,
+      "log": "/tmp/bergamot-parallel-workspace/run-16.txt"
+    },
+    {
+      "run": 17,
+      "exit_code": 0,
+      "elapsed_seconds": 5.63,
+      "log": "/tmp/bergamot-parallel-workspace/run-17.txt"
+    },
+    {
+      "run": 18,
+      "exit_code": 0,
+      "elapsed_seconds": 5.63,
+      "log": "/tmp/bergamot-parallel-workspace/run-18.txt"
+    },
+    {
+      "run": 19,
+      "exit_code": 0,
+      "elapsed_seconds": 5.67,
+      "log": "/tmp/bergamot-parallel-workspace/run-19.txt"
+    },
+    {
+      "run": 20,
+      "exit_code": 0,
+      "elapsed_seconds": 5.66,
+      "log": "/tmp/bergamot-parallel-workspace/run-20.txt"
+    }
+  ]
+}

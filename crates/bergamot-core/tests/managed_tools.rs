@@ -7,7 +7,53 @@ use bergamot_core::AppSettings;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::Write;
+use std::path::Path;
 use tempfile::tempdir;
+
+fn shell_invocation(script: String) -> (std::path::PathBuf, Vec<String>) {
+    #[cfg(unix)]
+    {
+        (
+            Path::new("/bin/sh").to_path_buf(),
+            vec!["-c".into(), script],
+        )
+    }
+    #[cfg(windows)]
+    {
+        let shell = std::env::var_os("COMSPEC")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| Path::new("cmd.exe").to_path_buf());
+        (shell, vec!["/C".into(), script])
+    }
+}
+
+fn shell_output(output: &str) -> (std::path::PathBuf, Vec<String>) {
+    let lines: Vec<_> = output.lines().collect();
+    #[cfg(unix)]
+    let script = format!(
+        "printf '%s\\n' {}",
+        lines
+            .iter()
+            .map(|line| format!("'{}'", line))
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+    #[cfg(windows)]
+    let script = lines
+        .iter()
+        .map(|line| format!("echo {line}"))
+        .collect::<Vec<_>>()
+        .join(" & ");
+    shell_invocation(script)
+}
+
+fn shell_exit(code: u8) -> Vec<String> {
+    #[cfg(unix)]
+    let script = format!("exit {code}");
+    #[cfg(windows)]
+    let script = format!("exit /B {code}");
+    shell_invocation(script).1
+}
 
 #[test]
 fn embedded_manifest_loads_and_has_ffmpeg() {
@@ -436,62 +482,36 @@ libavutil      59. 39.100 / 59. 39.100"#;
     // Test parse via verifier internal or helper
     use bergamot_core::managed_tools::verifier::VerificationError;
 
-    // We can test verifier's parse_ffmpeg_configuration
-    let temp = tempdir().unwrap();
-    let fake_ffmpeg = temp.path().join("ffmpeg_test");
-    // Write fake script that prints valid_gpl3
-    fs::write(
-        &fake_ffmpeg,
-        format!("#!/bin/sh\ncat << 'EOF'\n{}\nEOF\n", valid_gpl3),
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&fake_ffmpeg, fs::Permissions::from_mode(0o755)).unwrap();
-    }
-
     let manifest = ManagedToolsManifest::load_embedded().unwrap();
     let ffmpeg_def = manifest.tools.get("ffmpeg").unwrap();
+    let (fake_ffmpeg, version_command) = shell_output(valid_gpl3);
+    let mut verification = ffmpeg_def.verification.clone();
+    verification.command = version_command;
+    verification.encoders_command = Some(shell_output("libx264\nlibmp3lame").1);
 
-    let meta =
-        bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &ffmpeg_def.verification)
-            .expect("Should verify valid GPLv3 build");
+    let meta = bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &verification)
+        .expect("Should verify valid GPLv3 build");
     assert_eq!(meta.detected_license, "GPL-3.0");
 
-    fs::write(
-        &fake_ffmpeg,
-        format!("#!/bin/sh\ncat << 'EOF'\n{}\nEOF\n", valid_gpl2),
-    )
-    .unwrap();
+    verification.command = shell_output(valid_gpl2).1;
     let meta_gpl2 =
-        bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &ffmpeg_def.verification)
+        bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &verification)
             .expect("Should verify valid GPLv2 build");
     assert_eq!(meta_gpl2.detected_license, "GPL-2.0");
 
     // Test nonfree rejection
-    fs::write(
-        &fake_ffmpeg,
-        format!("#!/bin/sh\ncat << 'EOF'\n{}\nEOF\n", nonfree),
-    )
-    .unwrap();
-    let err =
-        bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &ffmpeg_def.verification)
-            .expect_err("Should reject nonfree build");
+    verification.command = shell_output(nonfree).1;
+    let err = bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &verification)
+        .expect_err("Should reject nonfree build");
     match err {
         VerificationError::InvalidLicense(msg) => assert!(msg.contains("nonfree")),
         other => panic!("Expected InvalidLicense for nonfree, got {:?}", other),
     }
 
     // Test missing gpl rejection
-    fs::write(
-        &fake_ffmpeg,
-        format!("#!/bin/sh\ncat << 'EOF'\n{}\nEOF\n", no_gpl),
-    )
-    .unwrap();
-    let err =
-        bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &ffmpeg_def.verification)
-            .expect_err("Should reject missing gpl build");
+    verification.command = shell_output(no_gpl).1;
+    let err = bergamot_core::managed_tools::verify_tool("ffmpeg", &fake_ffmpeg, &verification)
+        .expect_err("Should reject missing gpl build");
     match err {
         VerificationError::InvalidLicense(msg) => assert!(msg.contains("--enable-gpl")),
         other => panic!("Expected InvalidLicense for missing gpl, got {:?}", other),
@@ -607,39 +627,19 @@ fn python3_manifest_and_verification() {
     assert_eq!(asset.version, "3.12.16");
     assert_eq!(asset.sha256.len(), 64);
 
-    let temp = tempdir().unwrap();
-    let fake_py = temp.path().join("fake_python");
-    fs::write(
-        &fake_py,
-        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'Python 3.12.16'; exit 0; fi\nif [ \"$1\" = \"-c\" ]; then echo 'OK'; exit 0; fi\nexit 0\n",
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&fake_py, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let (shell, version_command) = shell_output("Python 3.12.16");
+    let mut verification = python.verification.clone();
+    verification.command = version_command;
+    verification.test_script_args = Some(shell_output("OK").1);
 
-    let meta = bergamot_core::managed_tools::verify_tool("python3", &fake_py, &python.verification)
+    let meta = bergamot_core::managed_tools::verify_tool("python3", &shell, &verification)
         .expect("Should verify valid python3");
     assert!(meta.detected_license.contains("PSF-2.0"));
     assert!(meta.version_output.contains("Python 3.12.16"));
 
-    let failing_py = temp.path().join("failing_python");
-    fs::write(
-        &failing_py,
-        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'Python 3.12.16'; exit 0; fi\nexit 1\n",
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&failing_py, fs::Permissions::from_mode(0o755)).unwrap();
-    }
-
-    let err =
-        bergamot_core::managed_tools::verify_tool("python3", &failing_py, &python.verification)
-            .expect_err("Should fail when stdlib test script fails");
+    verification.test_script_args = Some(shell_exit(1));
+    let err = bergamot_core::managed_tools::verify_tool("python3", &shell, &verification)
+        .expect_err("Should fail when stdlib test script fails");
     match err {
         bergamot_core::managed_tools::VerificationError::PythonScriptFailed(_) => {}
         other => panic!("Expected PythonScriptFailed, got {:?}", other),
@@ -741,42 +741,18 @@ fn imagemagick_manifest_and_verification() {
             .contains("brew"));
     }
 
-    let temp = tempdir().unwrap();
-    let fake_magick = temp.path().join("fake_magick");
-    fs::write(
-        &fake_magick,
-        "#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then echo 'Version: ImageMagick 7.1.2-35'; exit 0; fi\nif [ \"$1\" = \"-list\" ]; then echo 'WEBP* rw+ WebP Image Format'; exit 0; fi\nexit 0\n",
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&fake_magick, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    let (shell, version_command) = shell_output("Version: ImageMagick 7.1.2-35");
+    let mut verification = magick.verification.clone();
+    verification.command = version_command;
+    verification.formats_command = Some(shell_output("WEBP* rw+ WebP Image Format").1);
 
-    let meta =
-        bergamot_core::managed_tools::verify_tool("magick", &fake_magick, &magick.verification)
-            .expect("Should verify valid magick with WEBP");
+    let meta = bergamot_core::managed_tools::verify_tool("magick", &shell, &verification)
+        .expect("Should verify valid magick with WEBP");
     assert!(meta.detected_license.contains("ImageMagick"));
 
-    let missing_webp_magick = temp.path().join("missing_webp_magick");
-    fs::write(
-        &missing_webp_magick,
-        "#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then echo 'Version: ImageMagick 7.1.2-35'; exit 0; fi\nif [ \"$1\" = \"-list\" ]; then echo 'PNG* rw- PNG Format'; exit 0; fi\nexit 0\n",
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&missing_webp_magick, fs::Permissions::from_mode(0o755)).unwrap();
-    }
-
-    let err = bergamot_core::managed_tools::verify_tool(
-        "magick",
-        &missing_webp_magick,
-        &magick.verification,
-    )
-    .expect_err("Should fail when WEBP is missing");
+    verification.formats_command = Some(shell_output("PNG* rw- PNG Format").1);
+    let err = bergamot_core::managed_tools::verify_tool("magick", &shell, &verification)
+        .expect_err("Should fail when WEBP is missing");
     match err {
         bergamot_core::managed_tools::VerificationError::MissingFormats(missing) => {
             assert_eq!(missing, vec!["WEBP"]);

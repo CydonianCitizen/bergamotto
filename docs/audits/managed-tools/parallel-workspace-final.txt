@@ -1,0 +1,166 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.25s
+     Running unittests src/lib.rs (target/debug/deps/bergamot_core-25064677f21ce08e)
+
+running 4 tests
+test executors::process::tests::placeholders_in_inserted_paths_are_literal ... ok
+test managed_tools::extractor::tests::limited_writer_rejects_bytes_beyond_expanded_tar_budget ... ok
+test managed_tools::download::tests::redirect_target_url_is_checked_for_scheme_and_exact_host ... ok
+test managed_tools::download::tests::redirect_targets_use_production_policy ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/action_packs.rs (target/debug/deps/action_packs-27c027a8d30027c7)
+
+running 4 tests
+test invalid_or_repeated_entries_leave_registry_untouched ... ok
+test filesystem_conflict_prevents_partial_import ... ok
+test export_round_trips_single_and_enabled_actions ... ok
+test collision_preview_duplicate_and_overwrite_preserve_intended_manifests ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/managed_tools.rs (target/debug/deps/managed_tools-51c6f3882e462866)
+
+running 21 tests
+test download_allowed_hosts_allowlist ... ok
+test real_ffmpeg_archive_extraction_benchmark ... ignored, manual real-archive benchmark; set BERGAMOT_FFMPEG_ARCHIVE
+test embedded_manifest_loads_and_has_ffmpeg ... ok
+test tar_escaping_symlink_is_blocked ... ok
+test tar_escaping_hardlink_is_blocked ... ok
+test tar_decompressed_size_limit_is_enforced ... ok
+test test_live_download_and_verify_all_platform_tools ... ignored, requires network to download real assets for platform verification
+test tar_file_count_limit_is_enforced ... ok
+test tar_path_traversal_is_blocked ... ok
+test resolver_precedence_and_managed_tools_fallback ... ok
+test zip_existing_hardlink_target_is_not_overwritten ... ok
+test extraction_file_count_limit_is_enforced ... ok
+test zip_slip_path_traversal_is_blocked ... ok
+test zip_symlink_entry_is_rejected ... ok
+test zip_existing_symlink_parent_cannot_escape_destination ... ok
+test tar_symlink_parent_cannot_redirect_later_file_outside_destination ... ok
+test extraction_limits_are_enforced ... ok
+test imagemagick_manifest_and_verification ... ok
+test python3_manifest_and_verification ... ok
+test ffmpeg_configuration_parsing_and_license_detection ... ok
+test python3_managed_tool_resolution_and_stub_rejection ... ok
+
+test result: ok. 19 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/managed_tools_download_policy.rs (target/debug/deps/managed_tools_download_policy-da93919365d29c9b)
+
+running 1 test
+test normal_build_rejects_local_hosts_and_http_before_requesting ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/managed_tools_manifest.rs (target/debug/deps/managed_tools_manifest-6ef188325d4da50c)
+
+running 4 tests
+test older_ffmpeg_pins_explain_version_selection ... ok
+test manifest_rejects_asset_without_hash_provenance ... ok
+test every_manifest_asset_records_hash_provenance ... ok
+test manifest_schema_rejects_empty_or_undated_hash_provenance ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/process_dispatch.rs (target/debug/deps/process_dispatch-aac5a8f78b704555)
+
+running 10 tests
+test process_fixture ... ignored, run by the process integration tests
+test process_expands_each_input_as_one_literal_argument ... ok
+test executable_overrides_are_shared_by_detection_and_execution ... ok
+test scripts_receive_literal_positional_arguments_and_output_path ... ok
+test staged_outputs_never_clobber_and_only_publish_a_produced_file ... ok
+test custom_search_paths_find_tools_and_are_inherited_by_the_child ... ok
+test dispatcher_reports_each_file_and_batches_once ... ok
+test dispatcher_publishes_only_successful_files_and_resolves_collisions ... ok
+test cancellation_kills_descendant_and_discards_staged_output ... ok
+test timeout_kills_descendant_after_the_leader_exits ... ok
+
+test result: ok. 9 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 3.47s
+
+     Running tests/registry_matcher.rs (target/debug/deps/registry_matcher-f43d351cfcff0234)
+
+running 10 tests
+test backward_compatibility_with_manifests_omitting_sort_order_and_accent_color ... ok
+test matcher_sorts_actions_by_sort_order_and_label_deterministically ... ok
+test duplicate_manifest_ids_cannot_be_overwritten_by_registry_operations ... ok
+test matcher_filters_every_file_and_returns_ids_in_stable_order ... ok
+test schema_rejects_invalid_variants_and_unsafe_names ... ok
+test schema_validates_all_starters_and_fixtures ... ok
+test registry_persists_crud_and_does_not_restore_deleted_starters ... ok
+test reorder_actions_updates_sort_order_cleanly ... ok
+test registry_watches_external_create_replace_and_delete ... ok
+test reload_handler_sees_external_manifest_changes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests/secrets.rs (target/debug/deps/secrets-516f865b9da1b8c2)
+
+running 2 tests
+test invalid_credentials_never_enter_the_store ... ok
+test secrets_can_be_set_replaced_and_deleted_by_key ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/settings.rs (target/debug/deps/settings-894061666decb91c)
+
+running 2 tests
+test older_settings_use_defaults_for_missing_fields ... ok
+test settings_round_trip_and_failed_updates_keep_previous_values ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/webhook.rs (target/debug/deps/webhook-50242ed23b5ddb38)
+
+running 3 tests
+test webhook_substitutes_a_header_secret_and_rejects_failed_status ... ok
+test webhook_posts_multiple_files_with_bearer_credentials ... ok
+test webhook_times_out_while_reading_a_response ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
+
+     Running unittests src/lib.rs (target/debug/deps/bergamot-d6f4d658f0f12fca)
+
+running 1 test
+test tests::radial_arguments_preserve_spaces_and_resolve_relative_paths ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/bergamot-579061246e67480f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/os_adapter-82131f1d14a64c09)
+
+running 7 tests
+test tests::changing_modifier_or_enabled_state_invalidates_events_from_previous_configuration ... ok
+test tests::hold_threshold_waits_for_a_drag_source_then_allows_unknown_files ... ok
+test linux::tests::wayland_takes_precedence_over_xwayland_display ... ok
+test tests::modifier_release_cancels_once_and_requires_a_fresh_press ... ok
+test tests::requires_button_modifier_and_inclusive_euclidean_distance ... ok
+test tests::suspending_requires_a_fresh_mouse_press ... ok
+test tests::unfinished_press_releases_silently_and_resets_distance ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bergamot_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bergamot
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests os_adapter
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
