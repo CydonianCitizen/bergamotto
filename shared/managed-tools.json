@@ -12,18 +12,26 @@
         "sourceUrl": "https://ffmpeg.org/download.html"
       },
       "verification": {
-        "command": ["-version"],
-        "encodersCommand": ["-encoders"],
-        "requiredEncoders": ["libx264", "libmp3lame"]
+        "command": [
+          "-version"
+        ],
+        "encodersCommand": [
+          "-encoders"
+        ],
+        "requiredEncoders": [
+          "libx264",
+          "libmp3lame"
+        ]
       },
       "platforms": {
         "windows-x64": {
-          "version": "7.1",
-          "url": "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip",
-          "sha256": "fa7d4d7e795db0e2503f49f105f46ed5852386f0cfdd819899be3b65ebde24fc",
+          "version": "9.0.2",
+          "url": "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.2-essentials_build.zip",
+          "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
           "archiveFormat": "zip",
-          "binaryPath": "ffmpeg-7.1-essentials_build/bin/ffmpeg.exe",
-          "sizeBytes": 91931327
+          "binaryPath": "ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe",
+          "sizeBytes": 105423872,
+          "hashSource": "Official SHA-256 sidecar from https://www.gyan.dev/ffmpeg/builds/; verified 2026-11-15"
         },
         "linux-x64": {
           "version": "7.0.2",
@@ -31,7 +39,9 @@
           "sha256": "abda8d77ce8309141f83ab8edf0596834087c52467f6badf376a6a2a4c87cf67",
           "archiveFormat": "tar.xz",
           "binaryPath": "ffmpeg-7.0.2-amd64-static/ffmpeg",
-          "sizeBytes": 42084600
+          "sizeBytes": 42084600,
+          "hashSource": "Official MD5 sidecar https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz.md5; MD5 and local SHA-256 checked 2026-11-15",
+          "versionReason": "Retain 7.0.2: the examined FFmpeg 9.0.2 Linux x64 build reports --enable-nonfree; selected John Van Sickle 7.0.2 build was executed and has no --enable-nonfree."
         },
         "linux-arm64": {
           "version": "7.0.2",
@@ -39,15 +49,18 @@
           "sha256": "f4149bb2b0784e30e99bdda85471c9b5930d3402014e934a5098b41d0f7201b1",
           "archiveFormat": "tar.xz",
           "binaryPath": "ffmpeg-7.0.2-arm64-static/ffmpeg",
-          "sizeBytes": 36625844
+          "sizeBytes": 36625844,
+          "hashSource": "Official MD5 sidecar https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz.md5; MD5 and local SHA-256 checked 2026-11-15",
+          "versionReason": "Retain 7.0.2: downloaded Martin Riedl 9.0.2 arm64 configuration contains --enable-nonfree; selected John Van Sickle 7.0.2 static configuration has no --enable-nonfree."
         },
         "macos-arm64": {
-          "version": "7.1",
-          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1794696831_N-128910-g38519047ce/ffmpeg.zip",
-          "sha256": "5c7dbbc0a408d1ba6bb30eec2d48bc0418ea51da618beaf9e16cf849bfc9242e",
+          "version": "9.0.2",
+          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
+          "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
           "archiveFormat": "zip",
           "binaryPath": "ffmpeg",
-          "sizeBytes": 39078440
+          "sizeBytes": 66332880,
+          "hashSource": "Official SHA-256 sidecar at https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip.sha256; verified 2026-11-15"
         },
         "macos-x64": {
           "version": "9.0.2",
@@ -55,7 +68,8 @@
           "sha256": "4acc0be580f9b2788029eb7bd4d645ff87968911b0a62aeeb3940d42d54558d5",
           "archiveFormat": "zip",
           "binaryPath": "ffmpeg",
-          "sizeBytes": 80827688
+          "sizeBytes": 80827688,
+          "hashSource": "SHA-256 calculated locally; no upstream digest found at checked .sha256, .sha256sum, .md5, .md5sum endpoints; verified 2026-11-15"
         }
       },
       "manualInstructions": {
@@ -74,8 +88,13 @@
         "sourceUrl": "https://github.com/python/cpython"
       },
       "verification": {
-        "command": ["--version"],
-        "testScriptArgs": ["-c", "import hashlib, zipfile, pathlib; print('OK')"]
+        "command": [
+          "--version"
+        ],
+        "testScriptArgs": [
+          "-c",
+          "import hashlib, zipfile, pathlib; print('OK')"
+        ]
       },
       "platforms": {
         "windows-x64": {
@@ -84,7 +103,8 @@
           "sha256": "e23fe5b16926de1d81661b1a97352e89fb167549c55a6825796ccd0f32ec7f1b",
           "archiveFormat": "tar.gz",
           "binaryPath": "python/python.exe",
-          "sizeBytes": 40833701
+          "sizeBytes": 40833701,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
         },
         "linux-x64": {
           "version": "3.12.16",
@@ -92,7 +112,8 @@
           "sha256": "c2f87d4b4e8db3abddb0f116c6ccfc503d0cbdbb9ee8faacddad1b679ec12e99",
           "archiveFormat": "tar.gz",
           "binaryPath": "python/bin/python3",
-          "sizeBytes": 39499100
+          "sizeBytes": 39499100,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
         },
         "linux-arm64": {
           "version": "3.12.16",
@@ -100,7 +121,8 @@
           "sha256": "4792f81750282597fb2a3389fe18b945ed2ba6aad5e45ad406d122c58cb33081",
           "archiveFormat": "tar.gz",
           "binaryPath": "python/bin/python3",
-          "sizeBytes": 40320221
+          "sizeBytes": 40320221,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
         },
         "macos-arm64": {
           "version": "3.12.16",
@@ -108,7 +130,8 @@
           "sha256": "e956e60bc9465d577ef8062059aa05cd3a2665b4b8678a2ed24e432368330b8f",
           "archiveFormat": "tar.gz",
           "binaryPath": "python/bin/python3",
-          "sizeBytes": 29529742
+          "sizeBytes": 29529742,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
         },
         "macos-x64": {
           "version": "3.12.16",
@@ -116,7 +139,8 @@
           "sha256": "83f2922437e6d546d0fcdb8c11f150a8e52787e8d9ea8651b1974e20908eb1bc",
           "archiveFormat": "tar.gz",
           "binaryPath": "python/bin/python3",
-          "sizeBytes": 28836080
+          "sizeBytes": 28836080,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
         }
       },
       "manualInstructions": {
@@ -135,9 +159,16 @@
         "sourceUrl": "https://github.com/ImageMagick/ImageMagick"
       },
       "verification": {
-        "command": ["-version"],
-        "formatsCommand": ["-list", "format"],
-        "requiredFormats": ["WEBP"]
+        "command": [
+          "-version"
+        ],
+        "formatsCommand": [
+          "-list",
+          "format"
+        ],
+        "requiredFormats": [
+          "WEBP"
+        ]
       },
       "platforms": {
         "windows-x64": {
@@ -146,7 +177,8 @@
           "sha256": "34db4364da26c88d6b8cc5bbc1fff22b85d00d3b399c82fe85ee4790efacbbf1",
           "archiveFormat": "7z",
           "binaryPath": "magick.exe",
-          "sizeBytes": 12117825
+          "sizeBytes": 12117825,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
         },
         "linux-x64": {
           "version": "7.1.2-35",
@@ -154,7 +186,8 @@
           "sha256": "f111044ed06b68cfb478df724c5a32d35145afa21073242f888d234a2f8cc002",
           "archiveFormat": "appimage",
           "binaryPath": "squashfs-root/AppRun",
-          "sizeBytes": 33352184
+          "sizeBytes": 33352184,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
         }
       },
       "manualInstructions": {

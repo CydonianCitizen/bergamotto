@@ -46,8 +46,11 @@ pub struct VerificationConfig {
 #[serde(rename_all = "camelCase")]
 pub struct PlatformAsset {
     pub version: String,
+    #[serde(default)]
+    pub version_reason: Option<String>,
     pub url: String,
     pub sha256: String,
+    pub hash_source: String,
     pub archive_format: ArchiveFormat,
     pub binary_path: String,
     pub size_bytes: u64,
