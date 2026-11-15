@@ -1,6 +1,6 @@
 use bergamot_core::descriptor::ExecutorConfig;
 use bergamot_core::executors::process::{resolve_dependency_detailed, ToolSource};
-use bergamot_core::managed_tools::download::{download_file, is_allowed_host, DownloadError};
+use bergamot_core::managed_tools::download::is_allowed_host;
 use bergamot_core::managed_tools::extractor::{extract_archive, ExtractionError};
 use bergamot_core::managed_tools::manifest::{ArchiveFormat, ManagedToolsManifest};
 use bergamot_core::AppSettings;
@@ -43,8 +43,8 @@ fn download_allowed_hosts_allowlist() {
     assert!(is_allowed_host("ffmpeg.martin-riedl.de"));
     assert!(is_allowed_host("evermeet.cx"));
     assert!(is_allowed_host("download.imagemagick.org"));
-    assert!(is_allowed_host("127.0.0.1"));
-    assert!(is_allowed_host("localhost"));
+    assert!(!is_allowed_host("127.0.0.1"));
+    assert!(!is_allowed_host("localhost"));
 
     assert!(!is_allowed_host("evil.com"));
     assert!(!is_allowed_host("raw.githubusercontent.com"));
@@ -397,91 +397,6 @@ fn tar_decompressed_size_limit_is_enforced() {
         matches!(error, ExtractionError::TooLarge(1_000)),
         "{error:?}"
     );
-}
-
-#[tokio::test]
-async fn download_rejects_disallowed_redirect_hop_before_requesting_it() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    use tokio::net::TcpListener;
-
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
-    let server = tokio::spawn(async move {
-        for (status, location) in [
-            (
-                "302 Found",
-                format!("http://localhost:{}/second", address.port()),
-            ),
-            (
-                "302 Found",
-                "https://evil.invalid/never-requested".to_owned(),
-            ),
-        ] {
-            let (mut socket, _) = listener.accept().await.unwrap();
-            let mut request = [0u8; 1024];
-            let _ = socket.read(&mut request).await.unwrap();
-            socket
-                .write_all(
-                    format!(
-                        "HTTP/1.1 {status}\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-                    )
-                    .as_bytes(),
-                )
-                .await
-                .unwrap();
-        }
-    });
-
-    let temp = tempdir().unwrap();
-    let result = download_file(
-        &format!("http://127.0.0.1:{}/first", address.port()),
-        &"0".repeat(64),
-        &temp.path().join("download"),
-        100,
-        |_, _| {},
-        &tokio_util::sync::CancellationToken::new(),
-    )
-    .await;
-
-    assert!(
-        matches!(result, Err(DownloadError::UntrustedHost(ref host)) if host == "evil.invalid"),
-        "unexpected redirect result: {result:?}"
-    );
-    server.await.unwrap();
-}
-
-#[tokio::test]
-async fn download_rejects_insecure_redirect_target() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    use tokio::net::TcpListener;
-
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
-    let server = tokio::spawn(async move {
-        let (mut socket, _) = listener.accept().await.unwrap();
-        let mut request = [0u8; 1024];
-        let _ = socket.read(&mut request).await.unwrap();
-        socket
-            .write_all(
-                b"HTTP/1.1 302 Found\r\nLocation: http://github.com/never-requested\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
-            )
-            .await
-            .unwrap();
-    });
-
-    let temp = tempdir().unwrap();
-    let result = download_file(
-        &format!("http://127.0.0.1:{}/first", address.port()),
-        &"0".repeat(64),
-        &temp.path().join("download"),
-        100,
-        |_, _| {},
-        &tokio_util::sync::CancellationToken::new(),
-    )
-    .await;
-
-    assert!(matches!(result, Err(DownloadError::InsecureProtocol(scheme)) if scheme == "http"));
-    server.await.unwrap();
 }
 
 #[test]

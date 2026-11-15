@@ -44,15 +44,14 @@ pub enum DownloadError {
 }
 
 pub fn is_allowed_host(host: &str) -> bool {
-    host == "127.0.0.1" || host == "localhost" || ALLOWED_HOSTS.contains(&host)
+    ALLOWED_HOSTS.contains(&host)
 }
 
 fn validate_download_url(url: &reqwest::Url) -> Result<(), DownloadError> {
     let host = url
         .host_str()
         .ok_or_else(|| DownloadError::InvalidUrl(url.to_string()))?;
-    let is_local = host == "127.0.0.1" || host == "localhost";
-    if !is_local && url.scheme() != "https" {
+    if url.scheme() != "https" {
         return Err(DownloadError::InsecureProtocol(url.scheme().to_owned()));
     }
     if !is_allowed_host(host) {
@@ -76,51 +75,8 @@ where
         .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
-    let mut current_url =
-        reqwest::Url::parse(initial_url).map_err(|e| DownloadError::InvalidUrl(e.to_string()))?;
-    let mut redirects = 0;
-
-    let response = loop {
-        if cancel.is_cancelled() {
-            return Err(DownloadError::Cancelled);
-        }
-
-        // Validate every URL immediately before requesting it, including redirect targets.
-        validate_download_url(&current_url)?;
-
-        let request = client.get(current_url.clone()).send();
-        let resp = tokio::select! {
-            _ = cancel.cancelled() => return Err(DownloadError::Cancelled),
-            res = request => res?,
-        };
-
-        let status = resp.status();
-        if status.is_redirection() {
-            redirects += 1;
-            if redirects > 10 {
-                return Err(DownloadError::TooManyRedirects);
-            }
-            let location = resp
-                .headers()
-                .get(LOCATION)
-                .ok_or_else(|| {
-                    DownloadError::InvalidUrl("Missing Location header in redirect".into())
-                })?
-                .to_str()
-                .map_err(|e| DownloadError::InvalidUrl(e.to_string()))?;
-
-            current_url = current_url
-                .join(location)
-                .map_err(|e| DownloadError::InvalidUrl(e.to_string()))?;
-            continue;
-        }
-
-        if !status.is_success() {
-            return Err(DownloadError::HttpStatus(status));
-        }
-
-        break resp;
-    };
+    let response =
+        request_with_redirects(&client, initial_url, cancel, validate_download_url).await?;
 
     let total_bytes = response.content_length();
     let mut stream = response;
@@ -164,6 +120,60 @@ where
     Ok(())
 }
 
+async fn request_with_redirects<F>(
+    client: &reqwest::Client,
+    initial_url: &str,
+    cancel: &CancellationToken,
+    validate_url: F,
+) -> Result<reqwest::Response, DownloadError>
+where
+    F: Fn(&reqwest::Url) -> Result<(), DownloadError>,
+{
+    let mut current_url =
+        reqwest::Url::parse(initial_url).map_err(|e| DownloadError::InvalidUrl(e.to_string()))?;
+    let mut redirects = 0;
+
+    loop {
+        if cancel.is_cancelled() {
+            return Err(DownloadError::Cancelled);
+        }
+
+        // Apply the same policy before every request, including every redirect target.
+        validate_url(&current_url)?;
+
+        let request = client.get(current_url.clone()).send();
+        let response = tokio::select! {
+            _ = cancel.cancelled() => return Err(DownloadError::Cancelled),
+            result = request => result?,
+        };
+
+        if response.status().is_redirection() {
+            redirects += 1;
+            if redirects > 10 {
+                return Err(DownloadError::TooManyRedirects);
+            }
+            let location = response
+                .headers()
+                .get(LOCATION)
+                .ok_or_else(|| {
+                    DownloadError::InvalidUrl("Missing Location header in redirect".into())
+                })?
+                .to_str()
+                .map_err(|e| DownloadError::InvalidUrl(e.to_string()))?;
+            current_url = current_url
+                .join(location)
+                .map_err(|e| DownloadError::InvalidUrl(e.to_string()))?;
+            continue;
+        }
+
+        if !response.status().is_success() {
+            return Err(DownloadError::HttpStatus(response.status()));
+        }
+
+        return Ok(response);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,5 +197,73 @@ mod tests {
             validate_download_url(&reqwest::Url::parse("http://github.com/file").unwrap()),
             Err(DownloadError::InsecureProtocol(_))
         ));
+        assert!(matches!(
+            validate_download_url(&reqwest::Url::parse("https://localhost/file").unwrap()),
+            Err(DownloadError::UntrustedHost(host)) if host == "localhost"
+        ));
+        assert!(matches!(
+            validate_download_url(&reqwest::Url::parse("https://127.0.0.1/file").unwrap()),
+            Err(DownloadError::UntrustedHost(host)) if host == "127.0.0.1"
+        ));
+    }
+
+    #[tokio::test]
+    async fn redirect_targets_use_production_policy() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        for (target, expected) in [
+            ("https://localhost/target", "localhost"),
+            ("https://127.0.0.1/target", "127.0.0.1"),
+            ("http://github.com/target", "http"),
+            ("https://evil.invalid/target", "evil.invalid"),
+        ] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = tokio::spawn(async move {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut request = [0; 1024];
+                let _ = socket.read(&mut request).await.unwrap();
+                socket
+                    .write_all(
+                        format!(
+                            "HTTP/1.1 302 Found\r\nLocation: {target}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+            });
+
+            let client = reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .unwrap();
+            let initial = format!("http://127.0.0.1:{}/start", address.port());
+            let cancel = CancellationToken::new();
+            let allow_test_loopback_initial = |url: &reqwest::Url| {
+                if url.as_str() == initial {
+                    Ok(())
+                } else {
+                    validate_download_url(url)
+                }
+            };
+            let result =
+                request_with_redirects(&client, &initial, &cancel, allow_test_loopback_initial)
+                    .await;
+
+            match expected {
+                "localhost" | "127.0.0.1" | "evil.invalid" => assert!(matches!(
+                    result,
+                    Err(DownloadError::UntrustedHost(host)) if host == expected
+                )),
+                "http" => assert!(matches!(
+                    result,
+                    Err(DownloadError::InsecureProtocol(scheme)) if scheme == expected
+                )),
+                _ => unreachable!(),
+            }
+            server.await.unwrap();
+        }
     }
 }
