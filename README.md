@@ -114,7 +114,32 @@ Every action in Bergamotto lives as a standalone `.json` file inside your OS con
 
 Open **Settings & Paths** in Action Studio to choose single or dual modifier keys (`Shift`, `Ctrl`, `Alt`, `Alt + Shift`, `Ctrl + Shift`, `Ctrl + Alt`) for the global hook. The tray and Studio share the toggle, and both the modifier and toggle persist in `settings.json`. On macOS, Alt is Option.
 
-For a missing tool, add an absolute executable directory or an override from the manifest's tool name to the absolute executable path. Bergamotto searches custom directories first, then platform defaults (`/opt/homebrew/bin` and `/usr/local/bin` on macOS, `~/.local/bin` on Linux), then `PATH`. Overrides take precedence. Studio checks availability with the same resolver used to launch the action.
+For a missing tool, add an absolute executable directory or an override from the manifest's tool name to the absolute executable path. Bergamotto searches custom directories first, then platform defaults (`/opt/homebrew/bin` and `/usr/local/bin` on macOS, `~/.local/bin` on Linux), then `PATH`, and finally managed tools. Overrides take precedence. Studio checks availability with the same resolver used to launch the action.
+
+### Managed Tools (Fallback Tooling)
+
+Bergamotto adheres to a zero-bundled-binary philosophy: installers remain tiny, lightweight, and completely free of third-party executables. However, when you run an action that requires a missing tool (such as FFmpeg, Python 3, or ImageMagick), Bergamotto offers a **Managed Tools** system:
+
+* **On-Demand Consent:** When you drop files onto an action whose CLI tool is not installed on your system, Bergamotto prompts you with a consent dialog displaying the tool version, estimated download size, and its exact open-source license terms (with links to the license text and upstream source code). You can choose to download and install it automatically, use your existing binary, or cancel.
+* **Strict Resolution Order:** Managed tools are always the **last fallback**. Bergamotto checks user tool overrides, custom paths, platform default folders, and system `PATH` first. If you already have `ffmpeg` or `python3` in your `PATH`, Bergamotto uses your system version and will never download a duplicate.
+* **Security & Integrity:**
+  * Downloads are performed strictly over HTTPS and hop-by-hop validated against an exact domain allowlist (`github.com`, `release-assets.githubusercontent.com`, `johnvansickle.com`, `ffmpeg.martin-riedl.de`, `evermeet.cx`, `download.imagemagick.org`).
+  * Cryptographic **SHA-256 digests** are checked before decompressing or executing any file.
+  * Archives are extracted with strict path traversal (Zip-slip) protection, link escape guards, file count limits, and uncompressed size ceilings.
+  * After extraction, every tool is actively verified: FFmpeg must have `--enable-gpl`, must not contain `--enable-nonfree`, and must include `libx264` and `libmp3lame`; Python 3 runs a test suite importing standard library modules (`hashlib`, `zipfile`, `pathlib`); ImageMagick verifies WebP delegate support.
+* **Installation Directory:**
+  * **macOS:** `~/Library/Application Support/Bergamot/tools/<tool>/<version>/`
+  * **Windows:** `%LOCALAPPDATA%\Bergamot\tools\<tool>\<version>\`
+  * **Linux:** `~/.local/share/bergamot/tools/<tool>/<version>/`
+* **Uninstallation:** You can remove any downloaded tool at any time directly from Action Studio in **Settings & Paths** > **Managed Tools** by clicking **Remove**, or by deleting the tool's directory.
+
+#### Managed Tools Reference
+
+| Tool | Source & Platform Support | License | Verification Checks |
+| --- | --- | --- | --- |
+| **FFmpeg** | Windows x64 (GyanD 7.1), Linux x64/arm64 (John Van Sickle 7.0.2 static), macOS arm64 (Martin Riedl 7.1), macOS x64 (Evermeet 9.0.2) | GPL-3.0 (copyleft) | `ffmpeg -version` (verifies `--enable-gpl`, rejects `--enable-nonfree`), `-encoders` (`libx264`, `libmp3lame`) |
+| **Python 3** | Windows x64, Linux x64/arm64, macOS arm64/x64 (`astral-sh/python-build-standalone` CPython 3.12.16) | PSF-2.0 (bundled third-party licenses) | `python3 --version`, `-c "import hashlib, zipfile, pathlib; print('OK')"` |
+| **ImageMagick** | Windows x64 (portable 7.1.2 7z), Linux x64 (7.1.2 AppImage executed via `AppRun`). macOS and Linux arm64 use system package managers (`brew`, `apt`, `pacman`, `dnf`). | ImageMagick (Apache-2.0 compatible) | `magick -version`, `-list format` (verifies `WEBP` read/write) |
 
 ### Action Packs
 
@@ -131,7 +156,7 @@ New config directories get six editable starters. Existing action files remain a
 | Archive files to ZIP | Python 3. Writes one archive beside the first input. |
 | Upload to webhook | An HTTP endpoint accepting multipart POST. Configure the URL before enabling. |
 
-If Python 3 is installed as `python.exe`, add a `python3` override in **Settings & Paths**.
+On Windows, `python3` automatically maps to your system `python.exe` or to the managed Python fallback, so manual overrides are optional.
 
 ---
 

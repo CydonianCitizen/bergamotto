@@ -560,3 +560,34 @@ fn imagemagick_manifest_and_verification() {
         other => panic!("Expected MissingFormats, got {:?}", other),
     }
 }
+
+#[tokio::test]
+#[ignore = "requires network to download real assets for platform verification"]
+async fn test_live_download_and_verify_all_platform_tools() {
+    let manifest = ManagedToolsManifest::load_embedded().unwrap();
+    let platform_key =
+        ManagedToolsManifest::current_platform_key().expect("Platform should be recognized");
+    let temp = tempfile::tempdir().unwrap();
+
+    for (tool_id, tool_def) in &manifest.tools {
+        if let Some(_asset) = tool_def.platforms.get(platform_key) {
+            println!("Testing download and verification for {tool_id} on {platform_key}...");
+            let cancel = tokio_util::sync::CancellationToken::new();
+            let outcome = bergamot_core::managed_tools::install_tool(
+                &manifest,
+                tool_id,
+                temp.path(),
+                |dl, total| {
+                    if dl > 0 && dl % (5 * 1024 * 1024) == 0 {
+                        println!("  progress: {dl} / {total:?}");
+                    }
+                },
+                &cancel,
+            )
+            .await
+            .unwrap_or_else(|e| panic!("Failed to download and verify {tool_id}: {e}"));
+
+            println!("Successfully verified {tool_id}: {:?}", outcome.metadata);
+        }
+    }
+}
