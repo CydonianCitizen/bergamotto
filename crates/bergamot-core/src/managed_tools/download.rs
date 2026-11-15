@@ -9,6 +9,7 @@ use tokio_util::sync::CancellationToken;
 
 pub const ALLOWED_HOSTS: &[&str] = &[
     "github.com",
+    "www.gyan.dev",
     "release-assets.githubusercontent.com",
     "objects.githubusercontent.com",
     "johnvansickle.com",
@@ -46,6 +47,20 @@ pub fn is_allowed_host(host: &str) -> bool {
     host == "127.0.0.1" || host == "localhost" || ALLOWED_HOSTS.contains(&host)
 }
 
+fn validate_download_url(url: &reqwest::Url) -> Result<(), DownloadError> {
+    let host = url
+        .host_str()
+        .ok_or_else(|| DownloadError::InvalidUrl(url.to_string()))?;
+    let is_local = host == "127.0.0.1" || host == "localhost";
+    if !is_local && url.scheme() != "https" {
+        return Err(DownloadError::InsecureProtocol(url.scheme().to_owned()));
+    }
+    if !is_allowed_host(host) {
+        return Err(DownloadError::UntrustedHost(host.to_owned()));
+    }
+    Ok(())
+}
+
 pub async fn download_file<F>(
     initial_url: &str,
     expected_sha256: &str,
@@ -70,20 +85,8 @@ where
             return Err(DownloadError::Cancelled);
         }
 
-        let host = current_url
-            .host_str()
-            .ok_or_else(|| DownloadError::InvalidUrl(current_url.to_string()))?;
-
-        let is_local = host == "127.0.0.1" || host == "localhost";
-        if !is_local && current_url.scheme() != "https" {
-            return Err(DownloadError::InsecureProtocol(
-                current_url.scheme().to_owned(),
-            ));
-        }
-
-        if !is_allowed_host(host) {
-            return Err(DownloadError::UntrustedHost(host.to_owned()));
-        }
+        // Validate every URL immediately before requesting it, including redirect targets.
+        validate_download_url(&current_url)?;
 
         let request = client.get(current_url.clone()).send();
         let resp = tokio::select! {
@@ -159,4 +162,30 @@ where
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn redirect_target_url_is_checked_for_scheme_and_exact_host() {
+        assert!(
+            validate_download_url(&reqwest::Url::parse("https://github.com/file").unwrap()).is_ok()
+        );
+        assert!(
+            validate_download_url(&reqwest::Url::parse("https://www.gyan.dev/file").unwrap())
+                .is_ok()
+        );
+        assert!(matches!(
+            validate_download_url(
+                &reqwest::Url::parse("https://github.com.evil.invalid/file").unwrap()
+            ),
+            Err(DownloadError::UntrustedHost(_))
+        ));
+        assert!(matches!(
+            validate_download_url(&reqwest::Url::parse("http://github.com/file").unwrap()),
+            Err(DownloadError::InsecureProtocol(_))
+        ));
+    }
 }

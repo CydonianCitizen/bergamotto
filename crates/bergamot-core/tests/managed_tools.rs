@@ -1,6 +1,6 @@
 use bergamot_core::descriptor::ExecutorConfig;
 use bergamot_core::executors::process::{resolve_dependency_detailed, ToolSource};
-use bergamot_core::managed_tools::download::is_allowed_host;
+use bergamot_core::managed_tools::download::{download_file, is_allowed_host, DownloadError};
 use bergamot_core::managed_tools::extractor::{extract_archive, ExtractionError};
 use bergamot_core::managed_tools::manifest::{ArchiveFormat, ManagedToolsManifest};
 use bergamot_core::AppSettings;
@@ -76,6 +76,74 @@ fn zip_slip_path_traversal_is_blocked() {
     }
 
     assert!(!temp.path().join("evil.txt").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn zip_symlink_entry_is_rejected() {
+    let temp = tempdir().unwrap();
+    let archive_path = temp.path().join("symlink.zip");
+    let destination = temp.path().join("extracted");
+    let file = File::create(&archive_path).unwrap();
+    let mut zip = zip::ZipWriter::new(file);
+    zip.add_symlink(
+        "escape",
+        "../../outside",
+        zip::write::SimpleFileOptions::default(),
+    )
+    .unwrap();
+    zip.finish().unwrap();
+
+    let error = extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 10, 100)
+        .expect_err("zip symlink entry must be rejected");
+    assert!(
+        matches!(error, ExtractionError::LinkEscapes(_)),
+        "{error:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn zip_existing_symlink_parent_cannot_escape_destination() {
+    use std::os::unix::fs::symlink;
+    let temp = tempdir().unwrap();
+    let archive_path = temp.path().join("write.zip");
+    let destination = temp.path().join("extracted");
+    let outside = temp.path().join("outside");
+    fs::create_dir(&destination).unwrap();
+    fs::create_dir(&outside).unwrap();
+    symlink(&outside, destination.join("escape")).unwrap();
+    let file = File::create(&archive_path).unwrap();
+    let mut zip = zip::ZipWriter::new(file);
+    zip.start_file("escape/payload", zip::write::SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(b"must not escape").unwrap();
+    zip.finish().unwrap();
+
+    assert!(extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 10, 100).is_err());
+    assert!(!outside.join("payload").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn zip_existing_hardlink_target_is_not_overwritten() {
+    let temp = tempdir().unwrap();
+    let archive_path = temp.path().join("hardlink.zip");
+    let destination = temp.path().join("extracted");
+    fs::create_dir(&destination).unwrap();
+    let outside = temp.path().join("outside.txt");
+    fs::write(&outside, b"preserve outside file").unwrap();
+    fs::hard_link(&outside, destination.join("payload.txt")).unwrap();
+
+    let file = File::create(&archive_path).unwrap();
+    let mut zip = zip::ZipWriter::new(file);
+    zip.start_file("payload.txt", zip::write::SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(b"archive overwrite").unwrap();
+    zip.finish().unwrap();
+
+    assert!(extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 10, 100).is_err());
+    assert_eq!(fs::read(outside).unwrap(), b"preserve outside file");
 }
 
 #[test]
@@ -160,6 +228,74 @@ fn tar_escaping_symlink_is_blocked() {
 }
 
 #[test]
+fn tar_escaping_hardlink_is_blocked() {
+    let temp = tempdir().unwrap();
+    let archive_path = temp.path().join("hardlink_escape.tar.gz");
+    let destination = temp.path().join("extracted");
+    let file = File::create(&archive_path).unwrap();
+    let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+    let mut tar = tar::Builder::new(encoder);
+    let mut header = tar::Header::new_gnu();
+    header.set_entry_type(tar::EntryType::Link);
+    header.set_size(0);
+    header.set_cksum();
+    tar.append_link(&mut header, "nested/evil", "../../outside")
+        .unwrap();
+    tar.finish().unwrap();
+    tar.into_inner().unwrap().finish().unwrap();
+
+    let error = extract_archive(
+        &archive_path,
+        ArchiveFormat::TarGz,
+        &destination,
+        100,
+        1_000_000,
+    )
+    .expect_err("escaping hardlink must be rejected");
+    assert!(
+        matches!(error, ExtractionError::LinkEscapes(_)),
+        "{error:?}"
+    );
+    assert!(!temp.path().join("outside").exists());
+}
+
+#[test]
+fn tar_symlink_parent_cannot_redirect_later_file_outside_destination() {
+    let temp = tempdir().unwrap();
+    let archive_path = temp.path().join("symlink_chain.tar.gz");
+    let destination = temp.path().join("extracted");
+    let outside = temp.path().join("outside");
+    fs::create_dir(&outside).unwrap();
+    let file = File::create(&archive_path).unwrap();
+    let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+    let mut tar = tar::Builder::new(encoder);
+    let mut link = tar::Header::new_gnu();
+    link.set_entry_type(tar::EntryType::Symlink);
+    link.set_size(0);
+    link.set_cksum();
+    tar.append_link(&mut link, "pivot", "../outside").unwrap();
+    let data = b"must stay inside";
+    let mut payload = tar::Header::new_gnu();
+    payload.set_size(data.len() as u64);
+    payload.set_cksum();
+    tar.append_data(&mut payload, "pivot/payload", &data[..])
+        .unwrap();
+    tar.finish().unwrap();
+    tar.into_inner().unwrap().finish().unwrap();
+
+    let error = extract_archive(&archive_path, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .expect_err("archive link chain must not escape destination");
+    assert!(
+        matches!(
+            error,
+            ExtractionError::PathTraversal(_) | ExtractionError::LinkEscapes(_)
+        ),
+        "{error:?}"
+    );
+    assert!(!outside.join("payload").exists());
+}
+
+#[test]
 fn extraction_limits_are_enforced() {
     let temp = tempdir().unwrap();
     let zip_path = temp.path().join("bomb.zip");
@@ -188,6 +324,179 @@ fn extraction_limits_are_enforced() {
         ExtractionError::TooLarge(1_000) => {}
         other => panic!("Expected TooLarge, got {:?}", other),
     }
+}
+
+#[test]
+fn extraction_file_count_limit_is_enforced() {
+    let temp = tempdir().unwrap();
+    let archive_path = temp.path().join("many.zip");
+    let destination = temp.path().join("extracted");
+    let file = File::create(&archive_path).unwrap();
+    let mut zip = zip::ZipWriter::new(file);
+    for name in ["one", "two"] {
+        zip.start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(b"x").unwrap();
+    }
+    zip.finish().unwrap();
+
+    let error = extract_archive(&archive_path, ArchiveFormat::Zip, &destination, 1, 100)
+        .expect_err("file count limit must be enforced");
+    assert!(
+        matches!(error, ExtractionError::TooManyFiles(1)),
+        "{error:?}"
+    );
+}
+
+#[test]
+fn tar_file_count_limit_is_enforced() {
+    let temp = tempdir().unwrap();
+    let archive_path = temp.path().join("many.tar.gz");
+    let destination = temp.path().join("extracted");
+    let file = File::create(&archive_path).unwrap();
+    let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+    let mut tar = tar::Builder::new(encoder);
+    for name in ["one", "two"] {
+        let data = b"x";
+        let mut header = tar::Header::new_gnu();
+        header.set_size(data.len() as u64);
+        header.set_cksum();
+        tar.append_data(&mut header, name, &data[..]).unwrap();
+    }
+    tar.finish().unwrap();
+    tar.into_inner().unwrap().finish().unwrap();
+
+    let error = extract_archive(&archive_path, ArchiveFormat::TarGz, &destination, 1, 100)
+        .expect_err("tar file count limit must be enforced");
+    assert!(
+        matches!(error, ExtractionError::TooManyFiles(1)),
+        "{error:?}"
+    );
+}
+
+#[test]
+fn tar_decompressed_size_limit_is_enforced() {
+    let temp = tempdir().unwrap();
+    let archive_path = temp.path().join("large.tar.gz");
+    let destination = temp.path().join("extracted");
+    let file = File::create(&archive_path).unwrap();
+    let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+    let mut tar = tar::Builder::new(encoder);
+    let data = vec![b'x'; 2_048];
+    let mut header = tar::Header::new_gnu();
+    header.set_size(data.len() as u64);
+    header.set_cksum();
+    tar.append_data(&mut header, "large.bin", &data[..])
+        .unwrap();
+    tar.finish().unwrap();
+    tar.into_inner().unwrap().finish().unwrap();
+
+    let error = extract_archive(&archive_path, ArchiveFormat::TarGz, &destination, 10, 1_000)
+        .expect_err("tar byte limit must be enforced");
+    assert!(
+        matches!(error, ExtractionError::TooLarge(1_000)),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn download_rejects_disallowed_redirect_hop_before_requesting_it() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        for (status, location) in [
+            (
+                "302 Found",
+                format!("http://localhost:{}/second", address.port()),
+            ),
+            (
+                "302 Found",
+                "https://evil.invalid/never-requested".to_owned(),
+            ),
+        ] {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0u8; 1024];
+            let _ = socket.read(&mut request).await.unwrap();
+            socket
+                .write_all(
+                    format!(
+                        "HTTP/1.1 {status}\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                    )
+                    .as_bytes(),
+                )
+                .await
+                .unwrap();
+        }
+    });
+
+    let temp = tempdir().unwrap();
+    let result = download_file(
+        &format!("http://127.0.0.1:{}/first", address.port()),
+        &"0".repeat(64),
+        &temp.path().join("download"),
+        100,
+        |_, _| {},
+        &tokio_util::sync::CancellationToken::new(),
+    )
+    .await;
+
+    assert!(
+        matches!(result, Err(DownloadError::UntrustedHost(ref host)) if host == "evil.invalid"),
+        "unexpected redirect result: {result:?}"
+    );
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn download_rejects_insecure_redirect_target() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut request = [0u8; 1024];
+        let _ = socket.read(&mut request).await.unwrap();
+        socket
+            .write_all(
+                b"HTTP/1.1 302 Found\r\nLocation: http://github.com/never-requested\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            )
+            .await
+            .unwrap();
+    });
+
+    let temp = tempdir().unwrap();
+    let result = download_file(
+        &format!("http://127.0.0.1:{}/first", address.port()),
+        &"0".repeat(64),
+        &temp.path().join("download"),
+        100,
+        |_, _| {},
+        &tokio_util::sync::CancellationToken::new(),
+    )
+    .await;
+
+    assert!(matches!(result, Err(DownloadError::InsecureProtocol(scheme)) if scheme == "http"));
+    server.await.unwrap();
+}
+
+#[test]
+#[ignore = "manual real-archive benchmark; set BERGAMOT_FFMPEG_ARCHIVE"]
+fn real_ffmpeg_archive_extraction_benchmark() {
+    let archive = std::env::var("BERGAMOT_FFMPEG_ARCHIVE").expect("archive path env var");
+    let destination = tempdir().unwrap();
+    extract_archive(
+        std::path::Path::new(&archive),
+        ArchiveFormat::TarXz,
+        destination.path(),
+        50_000,
+        1_000_000_000,
+    )
+    .expect("real FFmpeg archive extraction");
 }
 
 #[test]

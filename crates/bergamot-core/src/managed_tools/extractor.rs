@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::io::{self, BufReader};
+use std::io::{self, BufReader, Read};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -87,12 +87,19 @@ fn extract_zip(
         }
 
         let mut entry = zip.by_index(i)?;
+        if entry
+            .unix_mode()
+            .is_some_and(|mode| mode & 0o170000 == 0o120000)
+        {
+            return Err(ExtractionError::LinkEscapes(PathBuf::from(entry.name())));
+        }
         let enclosed = entry
             .enclosed_name()
             .ok_or_else(|| ExtractionError::PathTraversal(PathBuf::from(entry.name())))?
             .to_path_buf();
 
         let outpath = dest.join(enclosed);
+        ensure_safe_output_path(dest, &outpath, entry.is_dir())?;
 
         if entry.is_dir() {
             fs::create_dir_all(&outpath)?;
@@ -100,8 +107,15 @@ fn extract_zip(
             if let Some(parent) = outpath.parent() {
                 fs::create_dir_all(parent)?;
             }
-            let mut outfile = File::create(&outpath)?;
-            let written = io::copy(&mut entry, &mut outfile)?;
+            let mut outfile = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&outpath)?;
+            let remaining = max_bytes.saturating_sub(total_bytes);
+            let written = io::copy(
+                &mut entry.by_ref().take(remaining.saturating_add(1)),
+                &mut outfile,
+            )?;
             total_bytes += written;
             if total_bytes > max_bytes {
                 return Err(ExtractionError::TooLarge(max_bytes));
@@ -140,11 +154,43 @@ fn extract_tar_xz(
 ) -> Result<(), ExtractionError> {
     let mut xz_file = BufReader::new(File::open(archive_path)?);
     let mut decompressed_tar = tempfile::tempfile()?;
-    lzma_rs::xz_decompress(&mut xz_file, &mut decompressed_tar)?;
+    let tar_overhead = (max_files as u64)
+        .saturating_mul(1024)
+        .saturating_add(1024 * 1024);
+    let stream_limit = max_bytes.saturating_add(tar_overhead);
+    let mut limited = LimitedWriter {
+        file: &mut decompressed_tar,
+        written: 0,
+        limit: stream_limit,
+    };
+    lzma_rs::xz_decompress(&mut xz_file, &mut limited)?;
     io::Seek::seek(&mut decompressed_tar, io::SeekFrom::Start(0))?;
 
     let mut archive = tar::Archive::new(decompressed_tar);
     unpack_tar_safely(&mut archive, dest, max_files, max_bytes)
+}
+
+struct LimitedWriter<'a> {
+    file: &'a mut File,
+    written: u64,
+    limit: u64,
+}
+
+impl io::Write for LimitedWriter<'_> {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if self.written.saturating_add(bytes.len() as u64) > self.limit {
+            return Err(io::Error::other(
+                "decompressed tar stream exceeds safety limit",
+            ));
+        }
+        let written = self.file.write(bytes)?;
+        self.written += written as u64;
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.file.flush()
+    }
 }
 
 fn unpack_tar_safely<R: io::Read>(
@@ -175,6 +221,8 @@ fn unpack_tar_safely<R: io::Read>(
         }
 
         let outpath = dest.join(&path);
+        let is_dir = entry.header().entry_type().is_dir();
+        ensure_safe_output_path(dest, &outpath, is_dir)?;
 
         let (is_link, mode) = {
             let header = entry.header();
@@ -189,6 +237,8 @@ fn unpack_tar_safely<R: io::Read>(
             if let Some(target) = entry.link_name()? {
                 let target_path = if target.is_absolute() {
                     target.into_owned()
+                } else if entry.header().entry_type().is_hard_link() {
+                    dest.join(&target)
                 } else if let Some(parent) = outpath.parent() {
                     parent.join(&target)
                 } else {
@@ -261,7 +311,8 @@ fn extract_7z(
                 fs::create_dir_all(parent)?;
             }
             let mut outfile = File::create(&outpath)?;
-            let written = io::copy(reader, &mut outfile)?;
+            let remaining = max_bytes.saturating_sub(total_bytes);
+            let written = io::copy(&mut reader.take(remaining.saturating_add(1)), &mut outfile)?;
             total_bytes += written;
             if total_bytes > max_bytes {
                 return Err(sevenz_rust::Error::other(format!(
@@ -312,4 +363,60 @@ fn normalize_path(path: &Path) -> PathBuf {
         }
     }
     components.iter().collect()
+}
+
+fn ensure_safe_output_path(
+    dest: &Path,
+    output: &Path,
+    allow_existing_dir: bool,
+) -> Result<(), ExtractionError> {
+    if output == dest {
+        return Ok(());
+    }
+    let relative = output
+        .strip_prefix(dest)
+        .map_err(|_| ExtractionError::PathTraversal(output.to_path_buf()))?;
+    let mut current = dest.to_path_buf();
+    let components: Vec<_> = relative.components().collect();
+    for component in components.iter().take(components.len().saturating_sub(1)) {
+        current.push(component);
+        match fs::symlink_metadata(&current) {
+            Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_dir() => {
+                return Err(ExtractionError::PathTraversal(current));
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => fs::create_dir(&current)?,
+            Err(error) => return Err(error.into()),
+        }
+    }
+    let canonical_parent = output.parent().unwrap_or(dest).canonicalize()?;
+    if !canonical_parent.starts_with(dest) {
+        return Err(ExtractionError::PathTraversal(output.to_path_buf()));
+    }
+    if let Ok(metadata) = fs::symlink_metadata(output) {
+        if !(allow_existing_dir && metadata.is_dir() && !metadata.file_type().is_symlink()) {
+            return Err(ExtractionError::PathTraversal(output.to_path_buf()));
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LimitedWriter;
+    use std::io::Write;
+
+    #[test]
+    fn limited_writer_rejects_bytes_beyond_expanded_tar_budget() {
+        let mut file = tempfile::tempfile().unwrap();
+        let mut writer = LimitedWriter {
+            file: &mut file,
+            written: 0,
+            limit: 4,
+        };
+
+        assert_eq!(writer.write(b"four").unwrap(), 4);
+        assert!(writer.write(b"x").is_err());
+        assert_eq!(writer.written, 4);
+    }
 }
