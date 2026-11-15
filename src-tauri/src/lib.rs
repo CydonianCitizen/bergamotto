@@ -171,6 +171,7 @@ pub fn run() {
         .manage(windows::WheelState::default())
         .manage(os_adapter::MonitorControl::default())
         .manage(jobs::Jobs::default())
+        .manage(commands::DownloadRegistry::default())
         .setup(|app| {
             let dirs =
                 BaseDirs::new().ok_or_else(|| std::io::Error::other("No user config directory"))?;
@@ -240,6 +241,10 @@ pub fn run() {
             commands::save_settings,
             commands::test_global_shortcut,
             commands::check_action_dependencies,
+            commands::get_managed_tools_status,
+            commands::install_managed_tool,
+            commands::uninstall_managed_tool,
+            commands::cancel_managed_tool_download,
             packs::read_action_pack,
             packs::preview_action_pack,
             packs::import_action_pack,

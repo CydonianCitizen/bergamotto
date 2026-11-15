@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ManagedToolsManifest",
+  "type": "object",
+  "required": ["schemaVersion", "tools"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "tools": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "description", "license", "verification", "platforms"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "license": {
+            "type": "object",
+            "required": ["name", "url", "isCopyleft", "sourceUrl"],
+            "properties": {
+              "name": { "type": "string" },
+              "url": { "type": "string", "format": "uri" },
+              "isCopyleft": { "type": "boolean" },
+              "sourceUrl": { "type": "string", "format": "uri" }
+            }
+          },
+          "verification": {
+            "type": "object",
+            "required": ["command"],
+            "properties": {
+              "command": { "type": "array", "items": { "type": "string" } },
+              "encodersCommand": { "type": "array", "items": { "type": "string" } },
+              "requiredEncoders": { "type": "array", "items": { "type": "string" } },
+              "formatsCommand": { "type": "array", "items": { "type": "string" } },
+              "requiredFormats": { "type": "array", "items": { "type": "string" } },
+              "testScriptArgs": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "platforms": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["version", "url", "sha256", "archiveFormat", "binaryPath", "sizeBytes"],
+              "properties": {
+                "version": { "type": "string" },
+                "url": { "type": "string", "format": "uri" },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "archiveFormat": { "type": "string", "enum": ["zip", "tar.gz", "tar.xz", "7z", "appimage"] },
+                "binaryPath": { "type": "string" },
+                "sizeBytes": { "type": "integer", "minimum": 1 }
+              }
+            }
+          },
+          "manualInstructions": {
+            "type": "object",
+            "properties": {
+              "linux": { "type": "string" },
+              "macos": { "type": "string" },
+              "windows": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

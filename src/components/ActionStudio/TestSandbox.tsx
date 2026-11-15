@@ -1,9 +1,10 @@
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
-import { CheckCircle2, Clock, FileCode, FolderOpen, LoaderCircle, Play, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Download, FileCode, FolderOpen, LoaderCircle, Play, XCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { errorText, ipc } from '../../ipc';
 import type { ActionDescriptor, JobSnapshot, ToolStatus } from '../../types/actions';
+import ToolConsentDialog from '../ToolConsentDialog';
 
 export function TestSandbox({
   action,
@@ -15,12 +16,16 @@ export function TestSandbox({
   const [samplePath, setSamplePath] = useState('/tmp/bergamot-test-file.txt');
   const [running, setRunning] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
   const [result, setResult] = useState<{
     status: 'succeeded' | 'failed' | 'cancelled';
     message: string;
   } | null>(null);
   const activeJobId = useRef<string | null>(null);
   const startTime = useRef<number>(0);
+
+  const toolFound = Boolean(toolStatus?.path);
+  const toolName = toolStatus?.tool ?? (action.executor.type === 'process' ? action.executor.program : undefined);
 
   async function chooseFile() {
     try {
@@ -39,6 +44,10 @@ export function TestSandbox({
 
   async function runTest() {
     if (running || !action.id) return;
+    if (!toolFound) {
+      setShowConsent(true);
+      return;
+    }
     setRunning(true);
     setResult(null);
     setDuration(null);
@@ -79,9 +88,6 @@ export function TestSandbox({
     };
   }, []);
 
-  const toolFound = Boolean(toolStatus?.path);
-  const toolName = toolStatus?.tool ?? (action.executor.type === 'process' ? action.executor.program : undefined);
-
   return (
     <div className="test-sandbox-card">
       <div className="sandbox-header">
@@ -95,15 +101,24 @@ export function TestSandbox({
             <>
               <CheckCircle2 size={16} />
               <span>
-                <strong>Tool available:</strong> <code>{toolStatus?.path}</code>
+                <strong>Tool available ({toolStatus?.source}):</strong> <code>{toolStatus?.path}</code>
               </span>
             </>
           ) : (
             <>
               <XCircle size={16} />
-              <span>
-                <strong>Tool missing:</strong> <code>{toolName}</code> could not be found. Configure custom path in Settings & Paths.
-              </span>
+              <div className="tool-missing-row">
+                <span>
+                  <strong>Tool missing:</strong> <code>{toolName}</code> could not be found.
+                </span>
+                <button
+                  type="button"
+                  className="button accent sm icon-text"
+                  onClick={() => setShowConsent(true)}
+                >
+                  <Download size={13} /> Install Tool
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -160,6 +175,16 @@ export function TestSandbox({
             <span>{result.message}</span>
           </div>
         </div>
+      )}
+
+      {showConsent && toolName && (
+        <ToolConsentDialog
+          toolId={toolName}
+          onClose={() => setShowConsent(false)}
+          onInstalled={() => {
+            setShowConsent(false);
+          }}
+        />
       )}
     </div>
   );

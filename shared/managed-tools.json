@@ -1,0 +1,68 @@
+{
+  "$schema": "./schemas/managed-tools.schema.json",
+  "schemaVersion": 1,
+  "tools": {
+    "ffmpeg": {
+      "name": "FFmpeg",
+      "description": "Video and audio processing engine (required for MP4 compression and MP3 extraction).",
+      "license": {
+        "name": "GPL-3.0",
+        "url": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "isCopyleft": true,
+        "sourceUrl": "https://ffmpeg.org/download.html"
+      },
+      "verification": {
+        "command": ["-version"],
+        "encodersCommand": ["-encoders"],
+        "requiredEncoders": ["libx264", "libmp3lame"]
+      },
+      "platforms": {
+        "windows-x64": {
+          "version": "7.1",
+          "url": "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip",
+          "sha256": "fa7d4d7e795db0e2503f49f105f46ed5852386f0cfdd819899be3b65ebde24fc",
+          "archiveFormat": "zip",
+          "binaryPath": "ffmpeg-7.1-essentials_build/bin/ffmpeg.exe",
+          "sizeBytes": 91931327
+        },
+        "linux-x64": {
+          "version": "7.0.2",
+          "url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz",
+          "sha256": "abda8d77ce8309141f83ab8edf0596834087c52467f6badf376a6a2a4c87cf67",
+          "archiveFormat": "tar.xz",
+          "binaryPath": "ffmpeg-7.0.2-amd64-static/ffmpeg",
+          "sizeBytes": 42084600
+        },
+        "linux-arm64": {
+          "version": "7.0.2",
+          "url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz",
+          "sha256": "f4149bb2b0784e30e99bdda85471c9b5930d3402014e934a5098b41d0f7201b1",
+          "archiveFormat": "tar.xz",
+          "binaryPath": "ffmpeg-7.0.2-arm64-static/ffmpeg",
+          "sizeBytes": 36625844
+        },
+        "macos-arm64": {
+          "version": "7.1",
+          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1794696831_N-128910-g38519047ce/ffmpeg.zip",
+          "sha256": "5c7dbbc0a408d1ba6bb30eec2d48bc0418ea51da618beaf9e16cf849bfc9242e",
+          "archiveFormat": "zip",
+          "binaryPath": "ffmpeg",
+          "sizeBytes": 39078440
+        },
+        "macos-x64": {
+          "version": "9.0.2",
+          "url": "https://evermeet.cx/ffmpeg/ffmpeg-9.0.2.zip",
+          "sha256": "4acc0be580f9b2788029eb7bd4d645ff87968911b0a62aeeb3940d42d54558d5",
+          "archiveFormat": "zip",
+          "binaryPath": "ffmpeg",
+          "sizeBytes": 80827688
+        }
+      },
+      "manualInstructions": {
+        "linux": "sudo apt install ffmpeg || sudo pacman -S ffmpeg || sudo dnf install ffmpeg",
+        "macos": "brew install ffmpeg",
+        "windows": "winget install Gyan.FFmpeg"
+      }
+    }
+  }
+}

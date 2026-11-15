@@ -43,6 +43,7 @@ pub struct AppSettings {
     pub global_shortcut: String,
     pub custom_paths: Vec<String>,
     pub tool_overrides: HashMap<String, String>,
+    pub managed_tools_dir: Option<PathBuf>,
 }
 
 impl Default for AppSettings {
@@ -53,11 +54,18 @@ impl Default for AppSettings {
             global_shortcut: "Alt+Shift+Space".to_string(),
             custom_paths: Vec::new(),
             tool_overrides: HashMap::new(),
+            managed_tools_dir: None,
         }
     }
 }
 
 impl AppSettings {
+    pub fn managed_tools_dir(&self) -> Option<PathBuf> {
+        self.managed_tools_dir
+            .clone()
+            .or_else(crate::managed_tools::default_managed_tools_dir)
+    }
+
     fn validate(&self) -> Result<(), SettingsError> {
         if self.custom_paths.iter().any(|path| !absolute_path(path)) {
             return Err(SettingsError::Invalid(

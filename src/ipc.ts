@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ActionDescriptor, AppSettings, JobSnapshot, PackCollision, PackPreview, ToolStatus, WheelPresentation } from './types/actions';
+import type { ActionDescriptor, AppSettings, JobSnapshot, ManagedToolInfo, PackCollision, PackPreview, ToolStatus, WheelPresentation } from './types/actions';
 
 export const ipc = {
   listActions: () => invoke<ActionDescriptor[]>('list_actions'),
@@ -32,6 +32,10 @@ export const ipc = {
   exportActionPack: (id: string | null, clipboard: boolean) => invoke<boolean>('export_action_pack', { id, clipboard }),
   toggleGlobalDrag: () => invoke<void>('toggle_global_drag'),
   closeDragWheel: (session: number) => invoke<void>('close_drag_wheel', { session }),
+  getManagedToolsStatus: () => invoke<ManagedToolInfo[]>('get_managed_tools_status'),
+  installManagedTool: (tool: string) => invoke<ManagedToolInfo>('install_managed_tool', { tool }),
+  uninstallManagedTool: (tool: string) => invoke<ManagedToolInfo>('uninstall_managed_tool', { tool }),
+  cancelManagedToolDownload: (tool: string) => invoke<void>('cancel_managed_tool_download', { tool }),
 };
 
 export function errorText(error: unknown) {

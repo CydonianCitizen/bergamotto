@@ -290,16 +290,51 @@ fn expand_argument(
     Ok(vec![result])
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ToolSource {
+    System,
+    Managed,
+    Missing,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolvedDependency {
+    pub path: PathBuf,
+    pub source: ToolSource,
+}
+
 pub fn resolve_dependency(
     executor: &ExecutorConfig,
     settings: &AppSettings,
 ) -> Result<Option<PathBuf>, ExecutionError> {
+    resolve_dependency_detailed(executor, settings).map(|res| res.map(|d| d.path))
+}
+
+pub fn resolve_dependency_detailed(
+    executor: &ExecutorConfig,
+    settings: &AppSettings,
+) -> Result<Option<ResolvedDependency>, ExecutionError> {
     let program = match executor {
         ExecutorConfig::Process { program, .. } => program,
         ExecutorConfig::Script { interpreter, .. } => interpreter,
         ExecutorConfig::Webhook { .. } => return Ok(None),
     };
-    resolve_program(program, settings, &search_path(executor, settings)?).map(Some)
+
+    let path = resolve_program(program, settings, &search_path(executor, settings)?)?;
+    let managed_base = settings.managed_tools_dir();
+    let source = if let Some(ref base) = managed_base {
+        if path.starts_with(base) {
+            ToolSource::Managed
+        } else {
+            ToolSource::System
+        }
+    } else {
+        ToolSource::System
+    };
+
+    Ok(Some(ResolvedDependency { path, source }))
 }
 
 fn search_path(
@@ -357,6 +392,10 @@ fn resolve_program(
     } else {
         std::env::split_paths(search_path).find_map(|directory| executable_at(directory.join(path)))
     };
+    let found = found.or_else(|| {
+        let tools_dir = settings.managed_tools_dir()?;
+        crate::managed_tools::resolve_managed_binary(&tools_dir, configured)
+    });
     found.ok_or_else(|| {
         ExecutionError::InvalidConfig(format!(
             "Executable {configured:?} was not found or is not executable"
