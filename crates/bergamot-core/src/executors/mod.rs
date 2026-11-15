@@ -3,6 +3,13 @@ pub mod webhook;
 
 use thiserror::Error;
 
+/// Maximum bytes captured per process output stream before the child is stopped.
+pub const MAX_CAPTURED_OUTPUT_BYTES: u64 = 8 * 1024 * 1024;
+/// Maximum webhook response bytes streamed to a staged file.
+pub const MAX_WEBHOOK_FILE_BYTES: u64 = 1024 * 1024 * 1024;
+/// Maximum stdout and stderr bytes retained for one dispatched action result.
+pub const MAX_AGGREGATE_OUTPUT_BYTES: u64 = 16 * 1024 * 1024;
+
 #[derive(Debug, Error)]
 pub enum ExecutionError {
     #[error("I/O error: {0}")]
@@ -15,6 +22,8 @@ pub enum ExecutionError {
     InvalidConfig(String),
     #[error("process exited unsuccessfully ({code:?}): {stderr}")]
     ProcessFailed { code: Option<i32>, stderr: String },
+    #[error("{stream} exceeded the {limit}-byte output limit")]
+    OutputLimit { stream: &'static str, limit: u64 },
     #[error("webhook request failed: {0}")]
     Webhook(String),
     #[error("credential could not be retrieved: {0}")]

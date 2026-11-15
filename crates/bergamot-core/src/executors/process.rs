@@ -13,7 +13,7 @@ use tokio_util::sync::CancellationToken;
 use crate::descriptor::ExecutorConfig;
 use crate::AppSettings;
 
-use super::{ExecutionError, ExecutionOutput};
+use super::{ExecutionError, ExecutionOutput, MAX_CAPTURED_OUTPUT_BYTES};
 
 /// Runs a direct command or a script file with separate OS arguments.
 /// `${inputs}` expands only when it occupies an entire argument.
@@ -175,14 +175,19 @@ pub(crate) async fn run_command(
         let stderr = leader.stderr.take();
         let wait_and_read = async move {
             // Keep the deadline active while descendants hold inherited pipes open.
-            tokio::try_join!(leader.wait(), read_pipe(stdout), read_pipe(stderr))
+            let wait = async move { leader.wait().await.map_err(ExecutionError::Io) };
+            tokio::try_join!(
+                wait,
+                read_pipe(stdout, "process stdout"),
+                read_pipe(stderr, "process stderr"),
+            )
         };
         let timeout = Duration::from_secs(u64::from(timeout_seconds));
         tokio::select! {
             biased;
             _ = cancel.cancelled() => Err(ExecutionError::Cancelled),
             result = tokio::time::timeout(timeout, wait_and_read) => match result {
-                Ok(result) => result.map_err(ExecutionError::Io),
+                Ok(result) => result,
                 Err(_) => Err(ExecutionError::TimedOut(timeout_seconds)),
             },
         }
@@ -609,10 +614,27 @@ impl Drop for ActiveGroup {
     }
 }
 
-async fn read_pipe(pipe: Option<impl AsyncRead + Unpin>) -> io::Result<Vec<u8>> {
+async fn read_pipe(
+    pipe: Option<impl AsyncRead + Unpin>,
+    stream: &'static str,
+) -> Result<Vec<u8>, ExecutionError> {
     let mut output = Vec::new();
     if let Some(mut pipe) = pipe {
-        pipe.read_to_end(&mut output).await?;
+        let mut buffer = [0_u8; 8192];
+        loop {
+            let count = pipe.read(&mut buffer).await?;
+            if count == 0 {
+                break;
+            }
+            let remaining = MAX_CAPTURED_OUTPUT_BYTES as usize - output.len();
+            if count > remaining {
+                return Err(ExecutionError::OutputLimit {
+                    stream,
+                    limit: MAX_CAPTURED_OUTPUT_BYTES,
+                });
+            }
+            output.extend_from_slice(&buffer[..count]);
+        }
     }
     Ok(output)
 }
