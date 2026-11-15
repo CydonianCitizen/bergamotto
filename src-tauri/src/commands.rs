@@ -353,6 +353,10 @@ pub async fn uninstall_managed_tool(
     settings: State<'_, Arc<SettingsStore>>,
     tool: String,
 ) -> Result<ManagedToolInfo, String> {
+    let manifest = ManagedToolsManifest::load_embedded()
+        .map_err(|e| format!("Could not load managed tools manifest: {e}"))?;
+    validate_managed_tool_id(&manifest, &tool)?;
+
     let snapshot = settings.snapshot();
     let tools_dir = snapshot
         .managed_tools_dir()
@@ -366,6 +370,16 @@ pub async fn uninstall_managed_tool(
     list.into_iter()
         .find(|t| t.id == tool)
         .ok_or_else(|| "Tool status not found".to_string())
+}
+
+fn validate_managed_tool_id(manifest: &ManagedToolsManifest, tool: &str) -> Result<(), String> {
+    if manifest.tools.contains_key(tool) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Tool '{tool}' is not defined in the managed tools manifest"
+        ))
+    }
 }
 
 #[tauri::command]
@@ -385,6 +399,19 @@ pub fn context(files: Vec<String>) -> Result<DragContext, String> {
         platform: Platform::current().ok_or("Unsupported platform")?,
         files: files.into_iter().map(PathBuf::from).collect(),
     })
+}
+
+#[cfg(test)]
+mod managed_tool_uninstall_tests {
+    use super::{validate_managed_tool_id, ManagedToolsManifest};
+
+    #[test]
+    fn uninstall_guard_rejects_ids_missing_from_embedded_manifest() {
+        let manifest = ManagedToolsManifest::load_embedded().unwrap();
+
+        assert!(validate_managed_tool_id(&manifest, "ffmpeg").is_ok());
+        assert!(validate_managed_tool_id(&manifest, "../outside").is_err());
+    }
 }
 
 #[tauri::command]

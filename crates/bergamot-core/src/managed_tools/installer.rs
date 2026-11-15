@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -189,11 +189,32 @@ where
 }
 
 pub fn uninstall_tool(tools_base_dir: &Path, tool_name: &str) -> io::Result<()> {
-    let tool_dir = tools_base_dir.join(tool_name);
-    if tool_dir.exists() {
-        fs::remove_dir_all(&tool_dir)?;
+    if tool_name.contains('/') || tool_name.contains('\\') {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Tool name must be a single path component",
+        ));
     }
-    Ok(())
+
+    let mut components = Path::new(tool_name).components();
+    if !matches!(components.next(), Some(Component::Normal(_))) || components.next().is_some() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Tool name must be a single path component",
+        ));
+    }
+
+    let tool_dir = tools_base_dir.join(tool_name);
+    match fs::symlink_metadata(&tool_dir) {
+        Ok(metadata) if metadata.file_type().is_symlink() => fs::remove_file(tool_dir),
+        Ok(metadata) if metadata.is_dir() => fs::remove_dir_all(tool_dir),
+        Ok(_) => Err(io::Error::new(
+            io::ErrorKind::NotADirectory,
+            "Managed tool path is not a directory",
+        )),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error),
+    }
 }
 
 fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
