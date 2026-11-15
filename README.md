@@ -155,6 +155,20 @@ Bergamotto
 * Node.js (20.19+ or 22.13+)
 * Platform-specific Tauri v2 dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
 
+#### Arch Linux
+Install system dependencies via `pacman`:
+```bash
+sudo pacman -S --needed base-devel webkit2gtk-4.1 libayatana-appindicator librsvg libx11 dbus openssl
+```
+
+Build from source:
+```bash
+git clone https://github.com/yourusername/bergamotto.git
+cd bergamotto
+npm install
+npm run tauri build   # or `npm run tauri dev` for live development
+```
+
 ### Development
 ```bash
 git clone https://github.com/yourusername/bergamotto.git
