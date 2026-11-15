@@ -68,7 +68,7 @@ pub fn verify_tool(
             }
         }
     } else if tool_name == "python3" {
-        detected_license = "PSF-2.0".to_string();
+        detected_license = "PSF-2.0 (with bundled third-party licenses)".to_string();
 
         if let Some(ref script_args) = config.test_script_args {
             let test_output = Command::new(binary_path).args(script_args).output()?;

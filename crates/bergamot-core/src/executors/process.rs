@@ -388,9 +388,23 @@ fn resolve_program(
     reject_windows_batch_file(configured)?;
     let path = Path::new(configured);
     let found = if replacement.is_some() || path.file_name() != Some(path.as_os_str()) {
-        executable_at(absolute(path)?)
+        executable_at(absolute(path)?).and_then(|p| validate_candidate(program, p))
     } else {
-        std::env::split_paths(search_path).find_map(|directory| executable_at(directory.join(path)))
+        let mut candidate_names = vec![configured];
+        if cfg!(windows) && configured.eq_ignore_ascii_case("python3") {
+            candidate_names.push("python");
+        }
+        std::env::split_paths(search_path).find_map(|directory| {
+            for name in &candidate_names {
+                let p = Path::new(name);
+                if let Some(cand) = executable_at(directory.join(p)) {
+                    if let Some(valid) = validate_candidate(program, cand) {
+                        return Some(valid);
+                    }
+                }
+            }
+            None
+        })
     };
     let found = found.or_else(|| {
         let tools_dir = settings.managed_tools_dir()?;
@@ -401,6 +415,76 @@ fn resolve_program(
             "Executable {configured:?} was not found or is not executable"
         ))
     })
+}
+
+fn validate_candidate(program: &str, path: PathBuf) -> Option<PathBuf> {
+    let is_python =
+        program.eq_ignore_ascii_case("python3") || program.eq_ignore_ascii_case("python");
+    if !is_python {
+        return Some(path);
+    }
+
+    #[cfg(windows)]
+    {
+        let path_str = path.to_string_lossy();
+        if path_str.contains(r"\Microsoft\WindowsApps\")
+            || path_str.contains(r"/Microsoft/WindowsApps/")
+            || path_str.ends_with(r"\Microsoft\WindowsApps")
+        {
+            return None;
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if path == Path::new("/usr/bin/python3") {
+            let has_clt = std::process::Command::new("xcode-select")
+                .arg("-p")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false);
+            if !has_clt {
+                return None;
+            }
+        }
+    }
+
+    if !verify_python_candidate(&path) {
+        return None;
+    }
+
+    Some(path)
+}
+
+fn verify_python_candidate(path: &Path) -> bool {
+    let mut child = match std::process::Command::new(path)
+        .args(["-c", "import sys; sys.exit(0)"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    let start = std::time::Instant::now();
+    let timeout = std::time::Duration::from_secs(5);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Ok(None) => {
+                if start.elapsed() > timeout {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return false;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            Err(_) => return false,
+        }
+    }
 }
 
 fn executable_at(path: PathBuf) -> Option<PathBuf> {

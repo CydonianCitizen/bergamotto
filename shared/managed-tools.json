@@ -63,6 +63,67 @@
         "macos": "brew install ffmpeg",
         "windows": "winget install Gyan.FFmpeg"
       }
+    },
+    "python3": {
+      "name": "Python 3",
+      "description": "Python runtime environment (required for SHA-256 checksum and ZIP archive starter actions).",
+      "license": {
+        "name": "PSF-2.0 (with bundled third-party licenses)",
+        "url": "https://docs.python.org/3/license.html",
+        "isCopyleft": false,
+        "sourceUrl": "https://github.com/python/cpython"
+      },
+      "verification": {
+        "command": ["--version"],
+        "testScriptArgs": ["-c", "import hashlib, zipfile, pathlib; print('OK')"]
+      },
+      "platforms": {
+        "windows-x64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-x86_64-pc-windows-msvc-install_only.tar.gz",
+          "sha256": "e23fe5b16926de1d81661b1a97352e89fb167549c55a6825796ccd0f32ec7f1b",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/python.exe",
+          "sizeBytes": 40833701
+        },
+        "linux-x64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-x86_64-unknown-linux-gnu-install_only.tar.gz",
+          "sha256": "c2f87d4b4e8db3abddb0f116c6ccfc503d0cbdbb9ee8faacddad1b679ec12e99",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/bin/python3",
+          "sizeBytes": 39499100
+        },
+        "linux-arm64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-aarch64-unknown-linux-gnu-install_only.tar.gz",
+          "sha256": "4792f81750282597fb2a3389fe18b945ed2ba6aad5e45ad406d122c58cb33081",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/bin/python3",
+          "sizeBytes": 40320221
+        },
+        "macos-arm64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-aarch64-apple-darwin-install_only.tar.gz",
+          "sha256": "e956e60bc9465d577ef8062059aa05cd3a2665b4b8678a2ed24e432368330b8f",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/bin/python3",
+          "sizeBytes": 29529742
+        },
+        "macos-x64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-x86_64-apple-darwin-install_only.tar.gz",
+          "sha256": "83f2922437e6d546d0fcdb8c11f150a8e52787e8d9ea8651b1974e20908eb1bc",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/bin/python3",
+          "sizeBytes": 28836080
+        }
+      },
+      "manualInstructions": {
+        "linux": "sudo apt install python3 || sudo pacman -S python || sudo dnf install python3",
+        "macos": "brew install python3",
+        "windows": "winget install Python.Python.3.12"
+      }
     }
   }
 }

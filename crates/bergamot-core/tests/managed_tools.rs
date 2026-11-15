@@ -365,3 +365,126 @@ fn resolver_precedence_and_managed_tools_fallback() {
     assert_eq!(resolved_override.path, override_binary);
     assert_eq!(resolved_override.source, ToolSource::System);
 }
+
+#[test]
+fn python3_manifest_and_verification() {
+    let manifest = ManagedToolsManifest::load_embedded().expect("Manifest should parse");
+    let python = manifest
+        .tools
+        .get("python3")
+        .expect("python3 should be defined");
+    assert_eq!(python.name, "Python 3");
+    assert!(!python.license.is_copyleft);
+    assert!(python.license.name.contains("PSF-2.0"));
+
+    let asset = manifest
+        .get_tool_asset("python3")
+        .expect("Python asset for current platform");
+    assert_eq!(asset.version, "3.12.16");
+    assert_eq!(asset.sha256.len(), 64);
+
+    let temp = tempdir().unwrap();
+    let fake_py = temp.path().join("fake_python");
+    fs::write(
+        &fake_py,
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'Python 3.12.16'; exit 0; fi\nif [ \"$1\" = \"-c\" ]; then echo 'OK'; exit 0; fi\nexit 0\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&fake_py, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    let meta = bergamot_core::managed_tools::verify_tool("python3", &fake_py, &python.verification)
+        .expect("Should verify valid python3");
+    assert!(meta.detected_license.contains("PSF-2.0"));
+    assert!(meta.version_output.contains("Python 3.12.16"));
+
+    let failing_py = temp.path().join("failing_python");
+    fs::write(
+        &failing_py,
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'Python 3.12.16'; exit 0; fi\nexit 1\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&failing_py, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    let err =
+        bergamot_core::managed_tools::verify_tool("python3", &failing_py, &python.verification)
+            .expect_err("Should fail when stdlib test script fails");
+    match err {
+        bergamot_core::managed_tools::VerificationError::PythonScriptFailed(_) => {}
+        other => panic!("Expected PythonScriptFailed, got {:?}", other),
+    }
+}
+
+#[test]
+fn python3_managed_tool_resolution_and_stub_rejection() {
+    let temp = tempdir().unwrap();
+    let managed_tools_dir = temp.path().join("managed_tools");
+    let custom_tools_dir = temp.path().join("custom_tools");
+    fs::create_dir_all(&managed_tools_dir).unwrap();
+    fs::create_dir_all(&custom_tools_dir).unwrap();
+
+    let manifest = ManagedToolsManifest::load_embedded().unwrap();
+    let asset = manifest.get_tool_asset("python3").unwrap();
+
+    let managed_binary = managed_tools_dir
+        .join("python3")
+        .join(&asset.version)
+        .join(&asset.binary_path);
+    fs::create_dir_all(managed_binary.parent().unwrap()).unwrap();
+    fs::write(&managed_binary, "#!/bin/sh\nexit 0\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&managed_binary, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    let mut env = BTreeMap::new();
+    let empty_path = temp.path().join("empty_path");
+    fs::create_dir_all(&empty_path).unwrap();
+    env.insert(
+        "PATH".to_string(),
+        empty_path.to_string_lossy().into_owned(),
+    );
+
+    let executor = ExecutorConfig::Process {
+        program: "python3".to_string(),
+        args: vec![],
+        working_directory: None,
+        env,
+        timeout_seconds: 30,
+    };
+
+    let settings = AppSettings {
+        managed_tools_dir: Some(managed_tools_dir),
+        ..AppSettings::default()
+    };
+
+    let resolved = resolve_dependency_detailed(&executor, &settings)
+        .unwrap()
+        .expect("Should resolve managed python3");
+    assert_eq!(resolved.path, managed_binary);
+    assert_eq!(resolved.source, ToolSource::Managed);
+
+    let broken_stub = custom_tools_dir.join(format!("python3{}", std::env::consts::EXE_SUFFIX));
+    fs::write(&broken_stub, "#!/bin/sh\nexit 1\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&broken_stub, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    let settings_with_stub = AppSettings {
+        custom_paths: vec![custom_tools_dir.to_string_lossy().into_owned()],
+        managed_tools_dir: Some(temp.path().join("nonexistent")),
+        ..AppSettings::default()
+    };
+
+    assert!(resolve_dependency_detailed(&executor, &settings_with_stub).is_err());
+}
