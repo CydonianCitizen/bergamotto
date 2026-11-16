@@ -67,6 +67,16 @@ def run(args: list[str], *, cwd: Path = ROOT, timeout: int = 900) -> str:
     return result.stdout
 
 
+def run_cargo(args: list[str], *, cwd: Path = ROOT, timeout: int = 900) -> str:
+    if "--offline" in args:
+        try:
+            return run(args, cwd=cwd, timeout=timeout)
+        except CollectionError:
+            online_args = [arg for arg in args if arg != "--offline"]
+            return run(online_args, cwd=cwd, timeout=timeout)
+    return run(args, cwd=cwd, timeout=timeout)
+
+
 def load_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -76,7 +86,7 @@ def load_json(path: Path) -> Any:
 
 def cargo_metadata() -> dict[str, Any]:
     return json.loads(
-        run(["cargo", "metadata", "--locked", "--offline", "--all-features", "--format-version", "1"])
+        run_cargo(["cargo", "metadata", "--locked", "--offline", "--all-features", "--format-version", "1"])
     )
 
 
@@ -155,7 +165,7 @@ def cargo_about_version() -> str:
 
 def cargo_about_data(config: Path, target: str) -> dict[str, Any]:
     print(f"cargo-about JSON: {target}", file=sys.stderr, flush=True)
-    output = run(
+    output = run_cargo(
         [
             "cargo", "about", "generate", "--config", str(config), "--manifest-path",
             str(ROOT / "Cargo.toml"), "--locked", "--offline", "--workspace", "--all-features", "--fail",
@@ -187,7 +197,7 @@ def about_template_license_texts(data: dict[str, Any]) -> list[dict[str, str]]:
 
 def cargo_about_union_license_texts(config: Path) -> list[dict[str, str]]:
     print("cargo-about JSON: configured target union", file=sys.stderr, flush=True)
-    output = run(
+    output = run_cargo(
         [
             "cargo", "about", "generate", "--config", str(config), "--manifest-path",
             str(ROOT / "Cargo.toml"), "--locked", "--offline", "--workspace", "--all-features", "--fail",
@@ -203,7 +213,7 @@ def cargo_about_union_license_texts(config: Path) -> list[dict[str, str]]:
 
 def render_about_template(config: Path) -> str:
     print("cargo-about template: about.hbs for configured target union", file=sys.stderr, flush=True)
-    return run(
+    return run_cargo(
         [
             "cargo", "about", "generate", str(ABOUT_TEMPLATE), "--config", str(config),
             "--manifest-path", str(ROOT / "Cargo.toml"), "--locked", "--offline", "--workspace",

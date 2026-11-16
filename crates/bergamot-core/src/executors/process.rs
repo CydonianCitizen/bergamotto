@@ -443,17 +443,25 @@ fn search_path(
         }),
         _ => None,
     };
-    let inherited = manifest_path
-        .map(OsString::from)
-        .or_else(|| std::env::var_os("PATH"))
-        .unwrap_or_default();
-    let directories = settings
-        .custom_paths
-        .iter()
-        .map(PathBuf::from)
-        .chain(default_tool_paths())
-        .chain(std::env::split_paths(&inherited))
-        .filter(|path| path.is_absolute());
+    let directories: Vec<PathBuf> = if let Some(path) = manifest_path {
+        settings
+            .custom_paths
+            .iter()
+            .map(PathBuf::from)
+            .chain(std::env::split_paths(path))
+            .filter(|path| path.is_absolute())
+            .collect()
+    } else {
+        let inherited = std::env::var_os("PATH").unwrap_or_default();
+        settings
+            .custom_paths
+            .iter()
+            .map(PathBuf::from)
+            .chain(std::env::split_paths(&inherited))
+            .chain(default_tool_paths())
+            .filter(|path| path.is_absolute())
+            .collect()
+    };
     std::env::join_paths(directories)
         .map_err(|_| ExecutionError::InvalidConfig("invalid executable search path".into()))
 }
