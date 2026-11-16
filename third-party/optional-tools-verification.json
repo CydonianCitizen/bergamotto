@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "shared/managed-tools.json": "b648ce7a31178032484d6bba86d69b6f8b4afd3cf7f641a52f0e6900010e77ef",
+    "docs/managed-tools-manifest-audit.md": "8de9155106c06383bfdc065e1629de47a560207a90dfb7339ea4e770d5e5045c",
+    "docs/audits/managed-tools/linux-x64-live-install.txt": "58114cf59627397112b9100417cf2deb43209ec00039ea21535c0716e723f03f",
+    "third-party/ffmpeg-windows-x64-configuration.json": "60602091db994b4b766574efdb474e6e421d0178f0eb5f32c55c3162b1ca8306",
+    "third-party/ffmpeg-linux-arm64-configuration.json": "2ab89fee32086563d55c71523dc0bbe1f55186f3dbdc2c52da472ca690a2ae0a",
+    "third-party/ffmpeg-macos-x64-configuration.json": "b2f14c38bb2c079721f2b43e9e31608a22369e7f40fff331cd96b09406bf093d"
+  },
+  "tools": {
+    "ffmpeg": {
+      "notes": [
+        "FFmpeg's general license is LGPL-2.1-or-later; builds with GPL components are GPL-2.0-or-later, and `--enable-version3` upgrades that build to GPL-3.0-or-later. All five pinned assets have configuration evidence containing both `--enable-gpl` and `--enable-version3`, with no `--enable-nonfree` recorded.",
+        "Each FFmpeg archive is offered only on demand after explicit user consent. It is not bundled in Bergamotto installers."
+      ],
+      "platforms": {
+        "windows-x64": {
+          "license": "GPL-3.0-or-later",
+          "evidence": "configuration strings extracted from the manifest-pinned Windows archive",
+          "checkedOn": "2026-11-16",
+          "source": "third-party/ffmpeg-windows-x64-configuration.json",
+          "citation": "configuration strings",
+          "licenseBasis": "The downloaded archive and extracted binary SHA-256 values were recorded. Every extracted configuration contains --enable-gpl and --enable-version3, includes the required encoders, and omits --enable-nonfree.",
+          "requiredMarkers": ["--enable-gpl --enable-version3", "--enable-libx264", "--enable-libmp3lame"],
+          "forbiddenMarkers": ["--enable-nonfree"],
+          "limits": "Configuration was extracted from the verified PE binary; it was not executed on Windows."
+        },
+        "linux-x64": {
+          "license": "GPL-3.0-or-later",
+          "evidence": "executed pinned binary; `ffmpeg -version` and `-encoders`",
+          "checkedOn": "2026-11-15",
+          "source": "docs/audits/managed-tools/linux-x64-live-install.txt",
+          "citation": "line 6",
+          "licenseBasis": "The executed FFmpeg 7.0.2 binary reports --enable-gpl and --enable-version3; the recorded output reports the license as GPL-3.0.",
+          "requiredMarkers": ["--enable-gpl --enable-version3", "detected_license: \"GPL-3.0\""],
+          "limits": "Runtime evidence is for Linux x64 only."
+        },
+        "linux-arm64": {
+          "license": "GPL-3.0-or-later",
+          "evidence": "configuration strings extracted from the manifest-pinned Linux archive",
+          "checkedOn": "2026-11-16",
+          "source": "third-party/ffmpeg-linux-arm64-configuration.json",
+          "citation": "configuration strings",
+          "licenseBasis": "The downloaded archive and extracted binary SHA-256 values were recorded. Both extracted configuration strings contain --enable-gpl and --enable-version3, include the required encoders, and omit --enable-nonfree.",
+          "requiredMarkers": ["--enable-gpl --enable-version3", "--enable-libx264", "--enable-libmp3lame"],
+          "forbiddenMarkers": ["--enable-nonfree"],
+          "limits": "Configuration was extracted from the verified arm64 binary; it was not executed on arm64."
+        },
+        "macos-arm64": {
+          "license": "GPL-3.0-or-later",
+          "evidence": "static strings from pinned archive configuration",
+          "checkedOn": "2026-11-15",
+          "source": "docs/managed-tools-manifest-audit.md",
+          "citation": "lines 50-56",
+          "licenseBasis": "The complete static configuration contains --enable-gpl and --enable-version3, and contains no --enable-nonfree. This establishes the build license version from the checked flags; native execution was not performed.",
+          "requiredMarkers": ["--enable-version3 --enable-gpl", "No `--enable-nonfree` appears", "both requested encoders appear"],
+          "limits": "Runtime was not run on macOS arm64; evidence is static strings only."
+        },
+        "macos-x64": {
+          "license": "GPL-3.0-or-later",
+          "evidence": "configuration strings extracted from the manifest-pinned macOS archive",
+          "checkedOn": "2026-11-16",
+          "source": "third-party/ffmpeg-macos-x64-configuration.json",
+          "citation": "configuration strings",
+          "licenseBasis": "The downloaded archive and extracted binary SHA-256 values were recorded. The extracted configuration contains --enable-gpl and --enable-version3, includes the required encoders, and omits --enable-nonfree.",
+          "requiredMarkers": ["--enable-gpl", "--enable-version3", "--enable-libx264", "--enable-libmp3lame"],
+          "forbiddenMarkers": ["--enable-nonfree"],
+          "limits": "Configuration was extracted from the verified macOS binary; it was not executed on macOS."
+        }
+      }
+    },
+    "python3": {
+      "notes": [
+        "The standalone CPython distributions include licenses/notices for bundled third-party components. If a Python distribution is redistributed separately, include those files in its `licenses/` folder.",
+        "Bergamotto offers these archives only on demand after explicit user consent; they are not bundled in Bergamotto installers."
+      ],
+      "platforms": {
+        "windows-x64": {
+          "license": "PSF-2.0 (with bundled third-party licenses)",
+          "evidence": "release asset pin and upstream source license metadata",
+          "checkedOn": "2026-11-15",
+          "source": "docs/managed-tools-manifest-audit.md",
+          "citation": "lines 14-18",
+          "licenseBasis": "The license is declared by the Python source project; the manifest pins the standalone 3.12.16 asset. No Windows runtime or archive license-folder inspection is recorded.",
+          "limits": "License applies to CPython; the archive's bundled third-party notices have not been inventoried here."
+        },
+        "linux-x64": {
+          "license": "PSF-2.0 (with bundled third-party licenses)",
+          "evidence": "executed pinned binary and release asset pin",
+          "checkedOn": "2026-11-15",
+          "source": "docs/audits/managed-tools/linux-x64-live-install.txt",
+          "citation": "line 10",
+          "licenseBasis": "The executed Python 3.12.16 runtime reports the pinned version; the project's source license is PSF-2.0.",
+          "requiredMarkers": ["Python 3.12.16", "detected_license: \"PSF-2.0 (with bundled third-party licenses)\""],
+          "limits": "The archive's bundled third-party notices have not been inventoried here."
+        },
+        "linux-arm64": {
+          "license": "PSF-2.0 (with bundled third-party licenses)",
+          "evidence": "release asset pin and upstream source license metadata",
+          "checkedOn": "2026-11-15",
+          "source": "docs/managed-tools-manifest-audit.md",
+          "citation": "lines 14-18",
+          "licenseBasis": "The license is declared by the Python source project; the manifest pins the standalone 3.12.16 asset. No Linux arm64 runtime or archive license-folder inspection is recorded.",
+          "limits": "License applies to CPython; the archive's bundled third-party notices have not been inventoried here."
+        },
+        "macos-arm64": {
+          "license": "PSF-2.0 (with bundled third-party licenses)",
+          "evidence": "release asset pin and upstream source license metadata",
+          "checkedOn": "2026-11-15",
+          "source": "docs/managed-tools-manifest-audit.md",
+          "citation": "lines 14-18",
+          "licenseBasis": "The license is declared by the Python source project; the manifest pins the standalone 3.12.16 asset. No macOS arm64 runtime or archive license-folder inspection is recorded.",
+          "limits": "License applies to CPython; the archive's bundled third-party notices have not been inventoried here."
+        },
+        "macos-x64": {
+          "license": "PSF-2.0 (with bundled third-party licenses)",
+          "evidence": "release asset pin and upstream source license metadata",
+          "checkedOn": "2026-11-15",
+          "source": "docs/managed-tools-manifest-audit.md",
+          "citation": "lines 14-18",
+          "licenseBasis": "The license is declared by the Python source project; the manifest pins the standalone 3.12.16 asset. No macOS x64 runtime or archive license-folder inspection is recorded.",
+          "limits": "License applies to CPython; the archive's bundled third-party notices have not been inventoried here."
+        }
+      }
+    },
+    "magick": {
+      "notes": [
+        "The ImageMagick license permits use under the ImageMagick License, described by the project as compatible with Apache-2.0. Managed archives are only offered after explicit user consent and are not bundled in Bergamotto installers."
+      ],
+      "platforms": {
+        "windows-x64": {
+          "license": "ImageMagick (Apache-2.0 compatible)",
+          "evidence": "release asset pin and upstream project license metadata",
+          "checkedOn": "2026-11-15",
+          "source": "docs/managed-tools-manifest-audit.md",
+          "citation": "lines 19-20",
+          "licenseBasis": "The ImageMagick project license applies to the pinned 7.1.2-35 portable asset. No Windows runtime or archive license-folder inspection is recorded.",
+          "limits": "The asset digest is recorded in the manifest audit; no native Windows execution was performed."
+        },
+        "linux-x64": {
+          "license": "ImageMagick (Apache-2.0 compatible)",
+          "evidence": "executed pinned binary and release asset pin",
+          "checkedOn": "2026-11-15",
+          "source": "docs/audits/managed-tools/linux-x64-live-install.txt",
+          "citation": "line 8",
+          "licenseBasis": "The executed ImageMagick 7.1.2-35 runtime reports the project license URL; the project license applies to the pinned asset.",
+          "requiredMarkers": ["ImageMagick 7.1.2-35", "License: https://imagemagick.org/license/"],
+          "limits": "Runtime evidence is for Linux x64 only."
+        }
+      }
+    }
+  }
+}

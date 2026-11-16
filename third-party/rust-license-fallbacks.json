@@ -1,0 +1,1658 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "name": "alloc-stdlib",
+      "version": "0.3.0",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/dropbox/rust-alloc-no-stdlib",
+      "commit": "0a81fd6928ea3b33c8cd484aa4575d50ffb98012",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+          "spdxId": "BSD-3-Clause",
+          "sourceUrl": "https://github.com/dropbox/rust-alloc-no-stdlib/blob/0a81fd6928ea3b33c8cd484aa4575d50ffb98012/LICENSE",
+          "gitBlobSha": "cd496ba72eb37e83a44958358d1f89a8a28cbc15"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/dropbox/rust-alloc-no-stdlib",
+          "commit": "0a81fd6928ea3b33c8cd484aa4575d50ffb98012",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+            "spdxId": "BSD-3-Clause",
+            "sourceUrl": "https://github.com/dropbox/rust-alloc-no-stdlib/blob/0a81fd6928ea3b33c8cd484aa4575d50ffb98012/LICENSE",
+            "gitBlobSha": "cd496ba72eb37e83a44958358d1f89a8a28cbc15"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "0b5c1865780388bfa186411ab5f247819487fc4864c6e9c3106611fa347586e1",
+          "cargoLockChecksum": "0b5c1865780388bfa186411ab5f247819487fc4864c6e9c3106611fa347586e1",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [
+        "Daniel Reiter Horn <danielrh@dropbox.com>"
+      ],
+      "declaredLicense": "BSD-3-Clause",
+      "selectedLicenseIds": [
+        "BSD-3-Clause"
+      ],
+      "archiveSha256": "0b5c1865780388bfa186411ab5f247819487fc4864c6e9c3106611fa347586e1",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "block2",
+      "version": "0.6.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "b4167b582b2f75f9a1be75495c41b765344fd03c",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "b4167b582b2f75f9a1be75495c41b765344fd03c",
+          "cargoPackagePathInVcs": "crates/block2"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "d0c0ec68bb362989649471ee9952db5a7fe43edc",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/b4167b582b2f75f9a1be75495c41b765344fd03c/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/b4167b582b2f75f9a1be75495c41b765344fd03c/Cargo.toml",
+          "gitBlobSha": "4fce8731a845ac67f629d19c6160e1b0772c85ad",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "cdeb9d870516001442e364c5220d3574d2da8dc765554b4a617230d33fa58ef5",
+          "cargoLockChecksum": "cdeb9d870516001442e364c5220d3574d2da8dc765554b4a617230d33fa58ef5",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [
+        "Mads Marquart <mads@marquart.dk>"
+      ],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "cdeb9d870516001442e364c5220d3574d2da8dc765554b4a617230d33fa58ef5",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "clipboard-win",
+      "version": "5.4.3",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/DoumanAsh/clipboard-win",
+      "commit": "ed27008ae5d1f10cfbb266de039f0fb35fd05a56",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+          "spdxId": "BSL-1.0",
+          "sourceUrl": "https://github.com/DoumanAsh/clipboard-win/blob/ed27008ae5d1f10cfbb266de039f0fb35fd05a56/LICENSE",
+          "gitBlobSha": "36b7cd93cdfbac762f5be4c6ce276df2ea6305c2"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/DoumanAsh/clipboard-win",
+          "commit": "ed27008ae5d1f10cfbb266de039f0fb35fd05a56",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+            "spdxId": "BSL-1.0",
+            "sourceUrl": "https://github.com/DoumanAsh/clipboard-win/blob/ed27008ae5d1f10cfbb266de039f0fb35fd05a56/LICENSE",
+            "gitBlobSha": "36b7cd93cdfbac762f5be4c6ce276df2ea6305c2"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "052af7878466feccda12ba7a6a67d019d712f296809559b47c12c8cc196d3a9a",
+          "cargoLockChecksum": "052af7878466feccda12ba7a6a67d019d712f296809559b47c12c8cc196d3a9a",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [
+        "Douman <douman@gmx.se>"
+      ],
+      "declaredLicense": "BSL-1.0",
+      "selectedLicenseIds": [
+        "BSL-1.0"
+      ],
+      "archiveSha256": "052af7878466feccda12ba7a6a67d019d712f296809559b47c12c8cc196d3a9a",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "dispatch2",
+      "version": "0.3.1",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "8852b424193ca41602281b3d7540d7c8ed51e49a",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "8852b424193ca41602281b3d7540d7c8ed51e49a",
+          "cargoPackagePathInVcs": "crates/dispatch2"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "f5faa3fe0ff7188b494870478597adf9d0d6ffd5",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/8852b424193ca41602281b3d7540d7c8ed51e49a/Cargo.toml",
+          "gitBlobSha": "4fce8731a845ac67f629d19c6160e1b0772c85ad",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38",
+          "cargoLockChecksum": "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [
+        "Mads Marquart <mads@marquart.dk>",
+        "Mary <mary@mary.zone>"
+      ],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "dlopen2",
+      "version": "0.8.2",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/OpenByteDev/dlopen2",
+      "commit": "cc80e4a0a90d499b677fdf7743699b4b3a43a989",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/OpenByteDev/dlopen2/blob/cc80e4a0a90d499b677fdf7743699b4b3a43a989/LICENSE",
+          "gitBlobSha": "d38093a7a564c64ad15e459f2e0a1f86a443c8b3"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/OpenByteDev/dlopen2",
+          "commit": "cc80e4a0a90d499b677fdf7743699b4b3a43a989",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/OpenByteDev/dlopen2/blob/cc80e4a0a90d499b677fdf7743699b4b3a43a989/LICENSE",
+            "gitBlobSha": "d38093a7a564c64ad15e459f2e0a1f86a443c8b3"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "5e2c5bd4158e66d1e215c49b837e11d62f3267b30c92f1d171c4d3105e3dc4d4",
+          "cargoLockChecksum": "5e2c5bd4158e66d1e215c49b837e11d62f3267b30c92f1d171c4d3105e3dc4d4",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [
+        "Szymon Wieloch <szymon.wieloch@gmail.com>",
+        "Ahmed Masud <ahmed.masud@saf.ai>",
+        "OpenByte <development.openbyte@gmail.com>"
+      ],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "5e2c5bd4158e66d1e215c49b837e11d62f3267b30c92f1d171c4d3105e3dc4d4",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "dlopen2_derive",
+      "version": "0.4.3",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/OpenByteDev/dlopen2",
+      "commit": "cc80e4a0a90d499b677fdf7743699b4b3a43a989",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/OpenByteDev/dlopen2/blob/cc80e4a0a90d499b677fdf7743699b4b3a43a989/LICENSE",
+          "gitBlobSha": "d38093a7a564c64ad15e459f2e0a1f86a443c8b3"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/OpenByteDev/dlopen2",
+          "commit": "cc80e4a0a90d499b677fdf7743699b4b3a43a989",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/OpenByteDev/dlopen2/blob/cc80e4a0a90d499b677fdf7743699b4b3a43a989/LICENSE",
+            "gitBlobSha": "d38093a7a564c64ad15e459f2e0a1f86a443c8b3"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "0fbbb781877580993a8707ec48672673ec7b81eeba04cfd2310bd28c08e47c8f",
+          "cargoLockChecksum": "0fbbb781877580993a8707ec48672673ec7b81eeba04cfd2310bd28c08e47c8f",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [
+        "Szymon Wieloch <szymon.wieloch@gmail.com>",
+        "OpenByte <development.openbyte@gmail.com>"
+      ],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "0fbbb781877580993a8707ec48672673ec7b81eeba04cfd2310bd28c08e47c8f",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "libappindicator-sys",
+      "version": "0.9.0",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/tauri-apps/libappindicator-rs",
+      "commit": "eafd1e3682a1247f595410266091e9684021cb6f",
+      "files": [
+        {
+          "path": "LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "spdxId": "Apache-2.0",
+          "sourceUrl": "https://github.com/tauri-apps/libappindicator-rs/blob/eafd1e3682a1247f595410266091e9684021cb6f/LICENSE-APACHE",
+          "gitBlobSha": "16fe87b06e802f094b3fbb0894b137bca2b16ef1"
+        },
+        {
+          "path": "LICENSE-MIT",
+          "sha256": "eb227437252b2a7a9c1fc342c93ade1f3d7ce38cc6dd754f613db07d53ceff0b",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/tauri-apps/libappindicator-rs/blob/eafd1e3682a1247f595410266091e9684021cb6f/LICENSE-MIT",
+          "gitBlobSha": "50e79e21ccd1454f00695108ae01eaff9569689a"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/tauri-apps/libappindicator-rs",
+          "commit": "eafd1e3682a1247f595410266091e9684021cb6f",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE-APACHE",
+            "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+            "spdxId": "Apache-2.0",
+            "sourceUrl": "https://github.com/tauri-apps/libappindicator-rs/blob/eafd1e3682a1247f595410266091e9684021cb6f/LICENSE-APACHE",
+            "gitBlobSha": "16fe87b06e802f094b3fbb0894b137bca2b16ef1"
+          },
+          {
+            "path": "LICENSE-MIT",
+            "sha256": "eb227437252b2a7a9c1fc342c93ade1f3d7ce38cc6dd754f613db07d53ceff0b",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/tauri-apps/libappindicator-rs/blob/eafd1e3682a1247f595410266091e9684021cb6f/LICENSE-MIT",
+            "gitBlobSha": "50e79e21ccd1454f00695108ae01eaff9569689a"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "6e9ec52138abedcc58dc17a7c6c0c00a2bdb4f3427c7f63fa97fd0d859155caf",
+          "cargoLockChecksum": "6e9ec52138abedcc58dc17a7c6c0c00a2bdb4f3427c7f63fa97fd0d859155caf",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [],
+      "declaredLicense": "Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "archiveSha256": "6e9ec52138abedcc58dc17a7c6c0c00a2bdb4f3427c7f63fa97fd0d859155caf",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2",
+      "version": "0.6.5",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "d7d2fa23ceaa5e6096c923b081040e5d81b3b9df",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "d7d2fa23ceaa5e6096c923b081040e5d81b3b9df",
+          "cargoPackagePathInVcs": "crates/objc2"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "6725a1f1378a8c0a7394d3c24bbb059e5c3e5765",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/d7d2fa23ceaa5e6096c923b081040e5d81b3b9df/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/d7d2fa23ceaa5e6096c923b081040e5d81b3b9df/Cargo.toml",
+          "gitBlobSha": "4fce8731a845ac67f629d19c6160e1b0772c85ad",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "08849bbd4767dfae9457696856ae1c84fe4e0281bbe4a7abff2d0e06fb7981f8",
+          "cargoLockChecksum": "08849bbd4767dfae9457696856ae1c84fe4e0281bbe4a7abff2d0e06fb7981f8",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [
+        "Mads Marquart <mads@marquart.dk>"
+      ],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "08849bbd4767dfae9457696856ae1c84fe4e0281bbe4a7abff2d0e06fb7981f8",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-app-kit",
+      "version": "0.3.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+          "cargoPackagePathInVcs": "framework-crates/objc2-app-kit"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "710642442d33002a98d95957801b30551b4edf82",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/Cargo.toml",
+          "gitBlobSha": "2ebd2c878fc38565ec58ee7593352319344d3c37",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "d49e936b501e5c5bf01fda3a9452ff86dc3ea98ad5f283e1455153142d97518c",
+          "cargoLockChecksum": "d49e936b501e5c5bf01fda3a9452ff86dc3ea98ad5f283e1455153142d97518c",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "d49e936b501e5c5bf01fda3a9452ff86dc3ea98ad5f283e1455153142d97518c",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-core-foundation",
+      "version": "0.3.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+          "cargoPackagePathInVcs": "framework-crates/objc2-core-foundation"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "710642442d33002a98d95957801b30551b4edf82",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/Cargo.toml",
+          "gitBlobSha": "2ebd2c878fc38565ec58ee7593352319344d3c37",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "2a180dd8642fa45cdb7dd721cd4c11b1cadd4929ce112ebd8b9f5803cc79d536",
+          "cargoLockChecksum": "2a180dd8642fa45cdb7dd721cd4c11b1cadd4929ce112ebd8b9f5803cc79d536",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "2a180dd8642fa45cdb7dd721cd4c11b1cadd4929ce112ebd8b9f5803cc79d536",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-core-graphics",
+      "version": "0.3.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+          "cargoPackagePathInVcs": "framework-crates/objc2-core-graphics"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "710642442d33002a98d95957801b30551b4edf82",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/Cargo.toml",
+          "gitBlobSha": "2ebd2c878fc38565ec58ee7593352319344d3c37",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "e022c9d066895efa1345f8e33e584b9f958da2fd4cd116792e15e07e4720a807",
+          "cargoLockChecksum": "e022c9d066895efa1345f8e33e584b9f958da2fd4cd116792e15e07e4720a807",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "e022c9d066895efa1345f8e33e584b9f958da2fd4cd116792e15e07e4720a807",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-core-services",
+      "version": "0.3.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+          "cargoPackagePathInVcs": "framework-crates/objc2-core-services"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "710642442d33002a98d95957801b30551b4edf82",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/Cargo.toml",
+          "gitBlobSha": "2ebd2c878fc38565ec58ee7593352319344d3c37",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "583300ad934cba24ff5292aee751ecc070f7ca6b39a574cc21b7b5e588e06a0b",
+          "cargoLockChecksum": "583300ad934cba24ff5292aee751ecc070f7ca6b39a574cc21b7b5e588e06a0b",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "583300ad934cba24ff5292aee751ecc070f7ca6b39a574cc21b7b5e588e06a0b",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-encode",
+      "version": "4.1.0",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "8d214f5477365ffcbcbb7de058c86ed9a518efb7",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "8d214f5477365ffcbcbb7de058c86ed9a518efb7",
+          "cargoPackagePathInVcs": "crates/objc2-encode"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "83c3be1498e17f9ac4ec91f786dd1c1615a9acfe",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/8d214f5477365ffcbcbb7de058c86ed9a518efb7/Cargo.toml",
+          "gitBlobSha": "30507042e5e378b730c76c6b6ab4b2d8ba14e736",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "ef25abbcd74fb2609453eb695bd2f860d389e457f67dc17cafc8b8cbc89d0c33",
+          "cargoLockChecksum": "ef25abbcd74fb2609453eb695bd2f860d389e457f67dc17cafc8b8cbc89d0c33",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [
+        "Mads Marquart <mads@marquart.dk>"
+      ],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "ef25abbcd74fb2609453eb695bd2f860d389e457f67dc17cafc8b8cbc89d0c33",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-exception-helper",
+      "version": "0.1.1",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "8d214f5477365ffcbcbb7de058c86ed9a518efb7",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "8d214f5477365ffcbcbb7de058c86ed9a518efb7",
+          "cargoPackagePathInVcs": "crates/objc2-exception-helper"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "83c3be1498e17f9ac4ec91f786dd1c1615a9acfe",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/8d214f5477365ffcbcbb7de058c86ed9a518efb7/Cargo.toml",
+          "gitBlobSha": "30507042e5e378b730c76c6b6ab4b2d8ba14e736",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "c7a1c5fbb72d7735b076bb47b578523aedc40f3c439bea6dfd595c089d79d98a",
+          "cargoLockChecksum": "c7a1c5fbb72d7735b076bb47b578523aedc40f3c439bea6dfd595c089d79d98a",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [
+        "Mads Marquart <mads@marquart.dk>"
+      ],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "c7a1c5fbb72d7735b076bb47b578523aedc40f3c439bea6dfd595c089d79d98a",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-foundation",
+      "version": "0.3.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+          "cargoPackagePathInVcs": "framework-crates/objc2-foundation"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "710642442d33002a98d95957801b30551b4edf82",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "The exact pinned tree contains only the shared LICENSE.md policy/link notice and no full MIT/Apache/Zlib license body."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/Cargo.toml",
+          "gitBlobSha": "2ebd2c878fc38565ec58ee7593352319344d3c37",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272",
+          "cargoLockChecksum": "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-io-surface",
+      "version": "0.3.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+          "cargoPackagePathInVcs": "framework-crates/objc2-io-surface"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "710642442d33002a98d95957801b30551b4edf82",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/Cargo.toml",
+          "gitBlobSha": "2ebd2c878fc38565ec58ee7593352319344d3c37",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "180788110936d59bab6bd83b6060ffdfffb3b922ba1396b312ae795e1de9d81d",
+          "cargoLockChecksum": "180788110936d59bab6bd83b6060ffdfffb3b922ba1396b312ae795e1de9d81d",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "180788110936d59bab6bd83b6060ffdfffb3b922ba1396b312ae795e1de9d81d",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-quartz-core",
+      "version": "0.3.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+          "cargoPackagePathInVcs": "framework-crates/objc2-quartz-core"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "710642442d33002a98d95957801b30551b4edf82",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/Cargo.toml",
+          "gitBlobSha": "2ebd2c878fc38565ec58ee7593352319344d3c37",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "96c1358452b371bf9f104e21ec536d37a650eb10f7ee379fff67d2e08d537f1f",
+          "cargoLockChecksum": "96c1358452b371bf9f104e21ec536d37a650eb10f7ee379fff67d2e08d537f1f",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "96c1358452b371bf9f104e21ec536d37a650eb10f7ee379fff67d2e08d537f1f",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "objc2-web-kit",
+      "version": "0.3.2",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/madsmtm/objc2",
+      "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "files": [
+        {
+          "path": "LICENSE-MIT.txt",
+          "sha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. The canonical MIT placeholder was replaced with Copyright (c) Mads Marquart using the verified root workspace Cargo.toml author at the exact package commit. The source evidence contains no year, so no year was added. UPSTREAM_LICENSE.md preserves the upstream policy notice separately, including the Apple SDK/Xcode caveat.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/madsmtm/objc2",
+          "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+          "cargoPackagePathInVcs": "framework-crates/objc2-web-kit"
+        },
+        "completeUpstreamTree": {
+          "treeSha": "710642442d33002a98d95957801b30551b4edf82",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licensePathsFound": [
+            "LICENSE.md"
+          ],
+          "conclusion": "No full MIT/Apache/Zlib body or LICENSE-MIT/LICENSE-APACHE/LICENSE-ZLIB exists in the complete tree; LICENSE.md is only a policy/link notice."
+        },
+        "upstreamPolicyNotice": {
+          "path": "UPSTREAM_LICENSE.md",
+          "sha256": "5901c82bb42bfbe9015097ebed64a7756eb617c7d403b1ae598990fca9a42e27",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "gitBlobSha": "540ae4c81adb5f64a9f61e222b688880da24300e",
+          "sizeBytes": 1339,
+          "purpose": "Preserved verbatim as a NOTICE, including the Apple SDK/Xcode caveat."
+        },
+        "copyrightEvidence": {
+          "author": "Mads Marquart",
+          "email": "mads@marquart.dk",
+          "sourceUrl": "https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/Cargo.toml",
+          "gitBlobSha": "2ebd2c878fc38565ec58ee7593352319344d3c37",
+          "statement": "Exact pinned root Cargo.toml sets workspace.package.authors to Mads Marquart <mads@marquart.dk>; no year appears."
+        },
+        "crateArchive": {
+          "sha256": "b2e5aaab980c433cf470df9d7af96a7b46a9d892d521a2cbbb2f8a4c16751e7f",
+          "cargoLockChecksum": "b2e5aaab980c433cf470df9d7af96a7b46a9d892d521a2cbbb2f8a4c16751e7f",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MIT.txt",
+          "gitBlobSha": "d817195dad53ec992418c28ffca5fbd1cd86502a",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MIT.txt",
+          "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "templateSha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+          "reconstructedSha256": "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+        }
+      },
+      "authors": [],
+      "declaredLicense": "Zlib OR Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "b2e5aaab980c433cf470df9d7af96a7b46a9d892d521a2cbbb2f8a4c16751e7f",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "selectors",
+      "version": "0.38.0",
+      "method": 3,
+      "verified": true,
+      "repository": "https://github.com/servo/stylo",
+      "commit": "572ecba2d1600e7c3d490586692a209faf703baa",
+      "files": [
+        {
+          "path": "LICENSE-MPL-2.0.txt",
+          "sha256": "1a389c0a135f37855baa2fb879f86ed111d7facf8b0d5188330b35a22c4428a1",
+          "spdxId": "MPL-2.0",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MPL-2.0.txt",
+          "gitBlobSha": "ee6256cdb62a765749a71aae3abea32884301cd1"
+        }
+      ],
+      "annotation": "license text reconstructed from the SPDX template; no copyright notice found in the distributed package. Exact package archive and complete pinned source tree contain no full MPL-2.0 body. Canonical SPDX MPL-2.0 is supplied verbatim from the pinned license-list-data commit.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/servo/stylo",
+          "commit": "572ecba2d1600e7c3d490586692a209faf703baa",
+          "cargoPackagePathInVcs": null
+        },
+        "completeUpstreamTree": {
+          "treeSha": "f2fdcc0ee347ce28a12060fb8b07ef7ea403d7ed",
+          "completeRecursiveTreeVerified": true,
+          "truncated": false,
+          "licenseFilesFound": [
+            "malloc_size_of/LICENSE-APACHE",
+            "malloc_size_of/LICENSE-MIT",
+            "servo_arc/LICENSE-APACHE",
+            "servo_arc/LICENSE-MIT",
+            "style/properties/vendored_python/markupsafe/LICENSE.txt"
+          ],
+          "conclusion": "No full MPL-2.0 body in complete pinned tree; named files are Apache/MIT or MarkupSafe."
+        },
+        "crateArchive": {
+          "sha256": "8adfa1c298912827b8a28b223b3b874357397ae706e6190acd9bf28cee99114d",
+          "cargoLockChecksum": "8adfa1c298912827b8a28b223b3b874357397ae706e6190acd9bf28cee99114d",
+          "licenseNamedFiles": []
+        },
+        "canonicalSpdxSource": {
+          "repository": "https://github.com/spdx/license-list-data",
+          "commit": "31846481de7ea17d92f2f46fad76abe58b2e9bb0",
+          "path": "text/MPL-2.0.txt",
+          "gitBlobSha": "ee6256cdb62a765749a71aae3abea32884301cd1",
+          "sourceUrl": "https://github.com/spdx/license-list-data/blob/31846481de7ea17d92f2f46fad76abe58b2e9bb0/text/MPL-2.0.txt",
+          "sha256": "66a3107d5ad6a058aab753eaac2047ccb2ed0e39465dd0fe5844da3e300d5172",
+          "templateSha256": "66a3107d5ad6a058aab753eaac2047ccb2ed0e39465dd0fe5844da3e300d5172",
+          "reconstructedSha256": "1a389c0a135f37855baa2fb879f86ed111d7facf8b0d5188330b35a22c4428a1"
+        }
+      },
+      "authors": [
+        "The Servo Project Developers"
+      ],
+      "declaredLicense": "MPL-2.0",
+      "selectedLicenseIds": [
+        "MPL-2.0"
+      ],
+      "archiveSha256": "8adfa1c298912827b8a28b223b3b874357397ae706e6190acd9bf28cee99114d",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "tauri-plugin",
+      "version": "2.7.2",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/tauri-apps/tauri",
+      "commit": "59b63ab500da9859f12d8888c3298bc29bba0b92",
+      "files": [
+        {
+          "path": "LICENSE-MIT",
+          "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/tauri-apps/tauri/blob/59b63ab500da9859f12d8888c3298bc29bba0b92/LICENSE-MIT",
+          "gitBlobSha": "b08530d59433b3060f4fad8751ac2610c0b0aff3"
+        },
+        {
+          "path": "LICENSE-APACHE-2.0",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+          "spdxId": "Apache-2.0",
+          "sourceUrl": "https://github.com/tauri-apps/tauri/blob/59b63ab500da9859f12d8888c3298bc29bba0b92/LICENSE-APACHE-2.0",
+          "gitBlobSha": "f433b1a53f5b830a205fd2df78e2b34974656c7b"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/tauri-apps/tauri",
+          "commit": "59b63ab500da9859f12d8888c3298bc29bba0b92",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE-MIT",
+            "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/tauri-apps/tauri/blob/59b63ab500da9859f12d8888c3298bc29bba0b92/LICENSE-MIT",
+            "gitBlobSha": "b08530d59433b3060f4fad8751ac2610c0b0aff3"
+          },
+          {
+            "path": "LICENSE-APACHE-2.0",
+            "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+            "spdxId": "Apache-2.0",
+            "sourceUrl": "https://github.com/tauri-apps/tauri/blob/59b63ab500da9859f12d8888c3298bc29bba0b92/LICENSE-APACHE-2.0",
+            "gitBlobSha": "f433b1a53f5b830a205fd2df78e2b34974656c7b"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "67fb21a77e8f94e8beb3325e583102488659365af0a3948b7ea244c5b779c291",
+          "cargoLockChecksum": "67fb21a77e8f94e8beb3325e583102488659365af0a3948b7ea244c5b779c291",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [
+        "Tauri Programme within The Commons Conservancy"
+      ],
+      "declaredLicense": "Apache-2.0 OR MIT",
+      "selectedLicenseIds": [
+        "MIT",
+        "Apache-2.0"
+      ],
+      "archiveSha256": "67fb21a77e8f94e8beb3325e583102488659365af0a3948b7ea244c5b779c291",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "uuid-simd",
+      "version": "0.8.0",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/Nugine/simd",
+      "commit": "d74c030d9dc4f3cae02146d1f497ff62726ef09a",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "71674605ec4c087fe9eb534e3e4f9e26eb2e4aabcd76a29fd156c6a844d44b3d",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/Nugine/simd/blob/d74c030d9dc4f3cae02146d1f497ff62726ef09a/LICENSE",
+          "gitBlobSha": "2c7eabb59093ea117d73b20effdd0414f87b2af2"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/Nugine/simd",
+          "commit": "d74c030d9dc4f3cae02146d1f497ff62726ef09a",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "71674605ec4c087fe9eb534e3e4f9e26eb2e4aabcd76a29fd156c6a844d44b3d",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/Nugine/simd/blob/d74c030d9dc4f3cae02146d1f497ff62726ef09a/LICENSE",
+            "gitBlobSha": "2c7eabb59093ea117d73b20effdd0414f87b2af2"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "23b082222b4f6619906941c17eb2297fff4c2fb96cb60164170522942a200bd8",
+          "cargoLockChecksum": "23b082222b4f6619906941c17eb2297fff4c2fb96cb60164170522942a200bd8",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "23b082222b4f6619906941c17eb2297fff4c2fb96cb60164170522942a200bd8",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "vsimd",
+      "version": "0.8.0",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/Nugine/simd",
+      "commit": "d74c030d9dc4f3cae02146d1f497ff62726ef09a",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "71674605ec4c087fe9eb534e3e4f9e26eb2e4aabcd76a29fd156c6a844d44b3d",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/Nugine/simd/blob/d74c030d9dc4f3cae02146d1f497ff62726ef09a/LICENSE",
+          "gitBlobSha": "2c7eabb59093ea117d73b20effdd0414f87b2af2"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/Nugine/simd",
+          "commit": "d74c030d9dc4f3cae02146d1f497ff62726ef09a",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "71674605ec4c087fe9eb534e3e4f9e26eb2e4aabcd76a29fd156c6a844d44b3d",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/Nugine/simd/blob/d74c030d9dc4f3cae02146d1f497ff62726ef09a/LICENSE",
+            "gitBlobSha": "2c7eabb59093ea117d73b20effdd0414f87b2af2"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64",
+          "cargoLockChecksum": "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "webview2-com",
+      "version": "0.39.1",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/wravery/webview2-rs",
+      "commit": "edc2caf886175ccaebe86078c9cfe1ae2a187328",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/wravery/webview2-rs/blob/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE",
+          "gitBlobSha": "de9a7e660e173136b351982a34f715af424ff812"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/wravery/webview2-rs",
+          "commit": "edc2caf886175ccaebe86078c9cfe1ae2a187328",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/wravery/webview2-rs/blob/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE",
+            "gitBlobSha": "de9a7e660e173136b351982a34f715af424ff812"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "3f89fca7a704cee10dcb3654c1dbb8941d1783132f1917358af75bec37a7d7e6",
+          "cargoLockChecksum": "3f89fca7a704cee10dcb3654c1dbb8941d1783132f1917358af75bec37a7d7e6",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "3f89fca7a704cee10dcb3654c1dbb8941d1783132f1917358af75bec37a7d7e6",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "webview2-com-macros",
+      "version": "0.8.1",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/wravery/webview2-rs",
+      "commit": "dffa41a8a46d3f5565eefbff2de57d38d399f158",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/wravery/webview2-rs/blob/dffa41a8a46d3f5565eefbff2de57d38d399f158/LICENSE",
+          "gitBlobSha": "de9a7e660e173136b351982a34f715af424ff812"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/wravery/webview2-rs",
+          "commit": "dffa41a8a46d3f5565eefbff2de57d38d399f158",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/wravery/webview2-rs/blob/dffa41a8a46d3f5565eefbff2de57d38d399f158/LICENSE",
+            "gitBlobSha": "de9a7e660e173136b351982a34f715af424ff812"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "67a921c1b6914c367b2b823cd4cde6f96beec77d30a939c8199bb377cf9b9b54",
+          "cargoLockChecksum": "67a921c1b6914c367b2b823cd4cde6f96beec77d30a939c8199bb377cf9b9b54",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "67a921c1b6914c367b2b823cd4cde6f96beec77d30a939c8199bb377cf9b9b54",
+      "checkedOn": "2026-11-16"
+    },
+    {
+      "name": "webview2-com-sys",
+      "version": "0.39.1",
+      "method": 2,
+      "verified": true,
+      "repository": "https://github.com/wravery/webview2-rs",
+      "commit": "edc2caf886175ccaebe86078c9cfe1ae2a187328",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73",
+          "spdxId": "MIT",
+          "sourceUrl": "https://github.com/wravery/webview2-rs/blob/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE",
+          "gitBlobSha": "de9a7e660e173136b351982a34f715af424ff812"
+        }
+      ],
+      "annotation": "Complete license text copied verbatim from the exact upstream repository file at the pinned package source commit. SHA-256 and Git blob are recorded per license branch.",
+      "repositoryEvidence": {
+        "packageSource": {
+          "repository": "https://github.com/wravery/webview2-rs",
+          "commit": "edc2caf886175ccaebe86078c9cfe1ae2a187328",
+          "cargoPackagePathInVcs": null
+        },
+        "recoveredFiles": [
+          {
+            "path": "LICENSE",
+            "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73",
+            "spdxId": "MIT",
+            "sourceUrl": "https://github.com/wravery/webview2-rs/blob/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE",
+            "gitBlobSha": "de9a7e660e173136b351982a34f715af424ff812"
+          }
+        ],
+        "crateArchive": {
+          "sha256": "b3a07132775117d6065853d9d1178157b8c90e228de47129d6bce2c7edebedfb",
+          "cargoLockChecksum": "b3a07132775117d6065853d9d1178157b8c90e228de47129d6bce2c7edebedfb",
+          "licenseNamedFiles": []
+        }
+      },
+      "authors": [],
+      "declaredLicense": "MIT",
+      "selectedLicenseIds": [
+        "MIT"
+      ],
+      "archiveSha256": "b3a07132775117d6065853d9d1178157b8c90e228de47129d6bce2c7edebedfb",
+      "checkedOn": "2026-11-16"
+    }
+  ],
+  "initialBlockerInventory": {
+    "checkedOn": "2026-11-16",
+    "packageCount": 24,
+    "packages": [
+      {
+        "name": "alloc-stdlib",
+        "version": "0.3.0"
+      },
+      {
+        "name": "block2",
+        "version": "0.6.2"
+      },
+      {
+        "name": "clipboard-win",
+        "version": "5.4.3"
+      },
+      {
+        "name": "dispatch2",
+        "version": "0.3.1"
+      },
+      {
+        "name": "dlopen2",
+        "version": "0.8.2"
+      },
+      {
+        "name": "dlopen2_derive",
+        "version": "0.4.3"
+      },
+      {
+        "name": "libappindicator-sys",
+        "version": "0.9.0"
+      },
+      {
+        "name": "objc2",
+        "version": "0.6.5"
+      },
+      {
+        "name": "objc2-app-kit",
+        "version": "0.3.2"
+      },
+      {
+        "name": "objc2-core-foundation",
+        "version": "0.3.2"
+      },
+      {
+        "name": "objc2-core-graphics",
+        "version": "0.3.2"
+      },
+      {
+        "name": "objc2-core-services",
+        "version": "0.3.2"
+      },
+      {
+        "name": "objc2-encode",
+        "version": "4.1.0"
+      },
+      {
+        "name": "objc2-exception-helper",
+        "version": "0.1.1"
+      },
+      {
+        "name": "objc2-io-surface",
+        "version": "0.3.2"
+      },
+      {
+        "name": "objc2-quartz-core",
+        "version": "0.3.2"
+      },
+      {
+        "name": "objc2-web-kit",
+        "version": "0.3.2"
+      },
+      {
+        "name": "selectors",
+        "version": "0.38.0"
+      },
+      {
+        "name": "tauri-plugin",
+        "version": "2.7.2"
+      },
+      {
+        "name": "uuid-simd",
+        "version": "0.8.0"
+      },
+      {
+        "name": "vsimd",
+        "version": "0.8.0"
+      },
+      {
+        "name": "webview2-com",
+        "version": "0.39.1"
+      },
+      {
+        "name": "webview2-com-macros",
+        "version": "0.8.1"
+      },
+      {
+        "name": "webview2-com-sys",
+        "version": "0.39.1"
+      }
+    ],
+    "additionalRecordsDiscoveredByCollector": [
+      {
+        "name": "objc2-foundation",
+        "version": "0.3.2"
+      }
+    ]
+  }
+}
