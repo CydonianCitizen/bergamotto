@@ -38,7 +38,11 @@ fn assert_normalized_tree(path: &Path) {
         let path = entry.path();
         let metadata = fs::symlink_metadata(&path).unwrap();
         if metadata.file_type().is_symlink() {
-            assert_eq!(metadata.permissions().mode() & 0o777, 0o777, "{path:?}");
+            assert_eq!(
+                metadata.permissions().mode() & 0o777,
+                symlink_mode(),
+                "{path:?}"
+            );
         } else if metadata.is_dir() {
             assert_normalized_tree(&path);
         } else if metadata.is_file() {
@@ -210,6 +214,15 @@ fn mode(path: &Path) -> u32 {
 }
 
 #[cfg(unix)]
+fn symlink_mode() -> u32 {
+    if cfg!(target_os = "macos") {
+        0o755
+    } else {
+        0o777
+    }
+}
+
+#[cfg(unix)]
 #[tokio::test]
 async fn tar_normalizes_regular_modes_without_chmod_through_symlinks() {
     let temp = tempdir().unwrap();
@@ -246,7 +259,7 @@ async fn tar_normalizes_regular_modes_without_chmod_through_symlinks() {
         fs::read_link(destination.join("link")).unwrap(),
         PathBuf::from("target")
     );
-    assert_eq!(mode(&destination.join("link")), 0o777);
+    assert_eq!(mode(&destination.join("link")), symlink_mode());
     assert_eq!(mode(&destination.join("target")), 0o755);
 }
 
@@ -615,7 +628,7 @@ async fn zip_normalizes_regular_modes_and_accepts_confined_forward_symlinks() {
     );
     assert_eq!(mode(&destination.join("target")), 0o755);
     assert_eq!(mode(&destination.join("data")), 0o644);
-    assert_eq!(mode(&destination.join("sub/first")), 0o777);
+    assert_eq!(mode(&destination.join("sub/first")), symlink_mode());
 }
 
 #[cfg(unix)]
@@ -800,7 +813,7 @@ async fn live_python_install_runs_and_has_normalized_archive_permissions() {
         .unwrap()
         .file_type()
         .is_symlink());
-    assert_eq!(mode(&python3), 0o777);
+    assert_eq!(mode(&python3), symlink_mode());
     use std::os::unix::fs::PermissionsExt;
     assert_eq!(
         fs::metadata(&python3).unwrap().permissions().mode() & 0o777,
@@ -851,7 +864,7 @@ async fn cached_python_archive_extracts_and_runs_with_normalized_permissions() {
         .unwrap()
         .file_type()
         .is_symlink());
-    assert_eq!(mode(&python3), 0o777);
+    assert_eq!(mode(&python3), symlink_mode());
     assert_eq!(
         fs::metadata(&python3).unwrap().permissions().mode() & 0o777,
         0o755
