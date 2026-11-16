@@ -1,0 +1,31 @@
+name: Managed Tools Verification
+
+on:
+  schedule:
+    # Run every Monday at 03:00 UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  verify-managed-tools:
+    name: Verify Managed Tools (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            name: Linux x64
+          - os: macos-15
+            name: macOS arm64
+          - os: windows-latest
+            name: Windows x64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Download, Verify SHA-256 and Run Tool Verifiers
+        run: cargo test --package bergamot-core --test managed_tools test_live_download_and_verify_all_platform_tools -- --ignored --nocapture

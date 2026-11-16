@@ -1,16 +1,20 @@
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
 use bergamot_core::executors::webhook::WebhookExecutor;
 use bergamot_core::{
-    CancellationToken, ExecutionError, ExecutorConfig, MemorySecretStore, SecretStore,
+    ActionInvocation, ActionRegistry, CancellationToken, Dispatcher, DragContext, ExecutionError,
+    ExecutorConfig, MemorySecretStore, OutputMode, Platform, SecretStore,
 };
 use tempfile::tempdir;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+
+const VALID_PROCESS: &str = include_str!("../../../shared/fixtures/valid-process.json");
 
 #[tokio::test]
 async fn webhook_posts_multiple_files_with_bearer_credentials() {
@@ -103,6 +107,92 @@ async fn webhook_times_out_while_reading_a_response() {
     server.abort();
 }
 
+#[tokio::test]
+async fn webhook_file_response_streams_to_staging_and_commits() {
+    let temp = tempdir().unwrap();
+    let input = temp.path().join("input.txt");
+    std::fs::write(&input, b"input").unwrap();
+    let (listener, url) = mock_listener().await;
+    let server = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        read_request(&mut stream).await;
+        send_chunked_response(&mut stream, &[b"streamed ", b"file output"]).await;
+    });
+    let (dispatcher, invocation) =
+        setup_dispatcher(&temp.path().join("actions"), url, OutputMode::File);
+    let (progress, _events) = mpsc::channel(4);
+
+    let result = dispatcher
+        .dispatch(&invocation, progress, &CancellationToken::new())
+        .await
+        .unwrap();
+
+    let expected = temp.path().join("input.out");
+    assert_eq!(result.output_files, std::slice::from_ref(&expected));
+    assert_eq!(std::fs::read(&expected).unwrap(), b"streamed file output");
+    assert_no_staging_files(temp.path());
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn webhook_none_mode_checks_content_length_limit() {
+    const CAPTURE_LIMIT: u64 = 8 * 1024 * 1024;
+    let temp = tempdir().unwrap();
+    let input = temp.path().join("input.txt");
+    std::fs::write(&input, b"input").unwrap();
+    let (listener, url) = mock_listener().await;
+    let server = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        read_request(&mut stream).await;
+        let header = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            CAPTURE_LIMIT + 1,
+        );
+        stream.write_all(header.as_bytes()).await.unwrap();
+    });
+    let (dispatcher, invocation) =
+        setup_dispatcher(&temp.path().join("actions"), url, OutputMode::None);
+    let (progress, _events) = mpsc::channel(4);
+
+    let result = dispatcher
+        .dispatch(&invocation, progress, &CancellationToken::new())
+        .await;
+
+    assert_output_limit(result, "webhook response", CAPTURE_LIMIT);
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn oversized_webhook_file_response_drops_partial_staging() {
+    const FILE_LIMIT: u64 = 1024 * 1024 * 1024;
+    let temp = tempdir().unwrap();
+    let input = temp.path().join("input.txt");
+    std::fs::write(&input, b"original").unwrap();
+    let (listener, url) = mock_listener().await;
+    let server = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        read_request(&mut stream).await;
+        let header = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            FILE_LIMIT + 1,
+        );
+        stream.write_all(header.as_bytes()).await.unwrap();
+    });
+    let (dispatcher, invocation) =
+        setup_dispatcher(&temp.path().join("actions"), url, OutputMode::File);
+    let (progress, _events) = mpsc::channel(4);
+
+    let result = dispatcher
+        .dispatch(&invocation, progress, &CancellationToken::new())
+        .await;
+
+    assert_output_limit(result, "webhook file response", FILE_LIMIT);
+    assert_eq!(std::fs::read(&input).unwrap(), b"original");
+    assert_no_staging_files(temp.path());
+    assert!(!temp.path().join("input.out").exists());
+    server.await.unwrap();
+}
+
 fn test_executor() -> WebhookExecutor {
     let store = MemorySecretStore::default();
     store
@@ -121,6 +211,83 @@ fn config(url: String, headers: BTreeMap<String, String>, timeout_seconds: u32) 
         credential_key: Some("test-credential".to_owned()),
         timeout_seconds,
     }
+}
+
+fn setup_dispatcher(
+    actions_directory: &Path,
+    url: String,
+    output_mode: OutputMode,
+) -> (Dispatcher, ActionInvocation) {
+    let registry = Arc::new(ActionRegistry::open(actions_directory).unwrap());
+    let mut action = ActionRegistry::parse_manifest(VALID_PROCESS).unwrap();
+    action.output.mode = output_mode;
+    action.output.extension = Some("out".to_owned());
+    action.executor = ExecutorConfig::Webhook {
+        method: "POST".to_owned(),
+        url,
+        headers: BTreeMap::new(),
+        file_field_name: "attachment".to_owned(),
+        credential_key: None,
+        timeout_seconds: 5,
+    };
+    registry.save_action(&action).unwrap();
+    let dispatcher = Dispatcher::with_secret_provider(
+        Arc::clone(&registry),
+        Arc::new(MemorySecretStore::default()),
+    )
+    .unwrap();
+    let invocation = ActionInvocation {
+        action_id: action.id,
+        context: DragContext {
+            platform: Platform::current().unwrap(),
+            files: vec![actions_directory.parent().unwrap().join("input.txt")],
+        },
+    };
+    (dispatcher, invocation)
+}
+
+async fn send_chunked_response(stream: &mut TcpStream, chunks: &[&[u8]]) {
+    stream
+        .write_all(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n")
+        .await
+        .unwrap();
+    for chunk in chunks {
+        stream
+            .write_all(format!("{:X}\r\n", chunk.len()).as_bytes())
+            .await
+            .unwrap();
+        stream.write_all(chunk).await.unwrap();
+        stream.write_all(b"\r\n").await.unwrap();
+    }
+    stream.write_all(b"0\r\n\r\n").await.unwrap();
+}
+
+fn assert_output_limit<T>(result: Result<T, ExecutionError>, stream: &str, limit: u64) {
+    match result {
+        Err(error) => {
+            let message = error.to_string();
+            assert!(
+                message.contains("output limit"),
+                "unexpected error: {message}"
+            );
+            assert!(message.contains(stream), "unexpected error: {message}");
+            assert!(
+                message.contains(&limit.to_string()),
+                "unexpected error: {message}"
+            );
+        }
+        Ok(_) => panic!("expected output-limit error"),
+    }
+}
+
+fn assert_no_staging_files(directory: &Path) {
+    assert!(std::fs::read_dir(directory).unwrap().all(|entry| {
+        !entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".bergamot-tmp-")
+    }));
 }
 
 async fn mock_listener() -> (TcpListener, String) {

@@ -14,6 +14,10 @@ node_modules/
 .eslintcache
 *.tsbuildinfo
 
+# --- Python helper caches ---
+__pycache__/
+*.py[cod]
+
 # --- Tauri v2 ---
 src-tauri/target/
 src-tauri/gen/schemas/

@@ -7,6 +7,64 @@ on:
   pull_request:
 
 jobs:
+  third-party-license-notices:
+    name: Regenerate third-party license notices (non-blocking)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend for bundle comparison
+        run: npm run build
+
+      - name: Fetch locked Rust dependency sources for all targets
+        run: |
+          cargo fetch --locked --target x86_64-unknown-linux-gnu
+          cargo fetch --locked --target x86_64-apple-darwin
+          cargo fetch --locked --target aarch64-apple-darwin
+          cargo fetch --locked --target x86_64-pc-windows-msvc
+
+      - name: Install pinned cargo-about
+        run: cargo install cargo-about --locked --version 0.9.3 --features cli
+
+      - name: Regenerate license notices
+        run: node scripts/generate-third-party-licenses.mjs
+
+      - name: Report generated notice drift
+        id: license-drift
+        run: |
+          if git diff --quiet -- THIRD_PARTY_LICENSES third-party/OPTIONAL_TOOLS_LICENSE_AUDIT.md third-party/FRONTEND_LICENSE_AUDIT.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Generated third-party notices match the committed files."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Third-party license notices are out of date; run node scripts/generate-third-party-licenses.mjs and review the diff."
+            git diff -- THIRD_PARTY_LICENSES third-party/OPTIONAL_TOOLS_LICENSE_AUDIT.md third-party/FRONTEND_LICENSE_AUDIT.md
+            git diff --binary -- THIRD_PARTY_LICENSES third-party/OPTIONAL_TOOLS_LICENSE_AUDIT.md third-party/FRONTEND_LICENSE_AUDIT.md > /tmp/third-party-license-drift.patch
+          fi
+
+      - name: Upload generated notice diff
+        if: steps.license-drift.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: third-party-license-notice-diff
+          path: /tmp/third-party-license-drift.patch
+
   lint-and-frontend:
     name: Lint, Typecheck & Formatting
     runs-on: ubuntu-24.04
@@ -36,6 +94,24 @@ jobs:
 
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
+
+  dependency-advisories:
+    name: Dependency Advisories
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-deny
+        run: cargo install --locked --version 0.20.2 cargo-deny
+
+      - name: Check dependency advisories
+        run: cargo deny --locked check advisories
 
   cross-os-check-and-test:
     name: Check & Test (${{ matrix.name }})

@@ -1,0 +1,61 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.26s
+     Running unittests src/lib.rs (target/debug/deps/bergamot_core-25064677f21ce08e)
+
+running 4 tests
+test executors::process::tests::placeholders_in_inserted_paths_are_literal ... ok
+test managed_tools::download::tests::redirect_target_url_is_checked_for_scheme_and_exact_host ... ok
+test managed_tools::extractor::tests::limited_writer_rejects_bytes_beyond_expanded_tar_budget ... ok
+test managed_tools::download::tests::redirect_targets_use_production_policy ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/action_packs.rs (target/debug/deps/action_packs-27c027a8d30027c7)
+
+running 4 tests
+test invalid_or_repeated_entries_leave_registry_untouched ... ok
+test filesystem_conflict_prevents_partial_import ... ok
+test export_round_trips_single_and_enabled_actions ... ok
+test collision_preview_duplicate_and_overwrite_preserve_intended_manifests ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/managed_tools.rs (target/debug/deps/managed_tools-51c6f3882e462866)
+
+running 21 tests
+test download_allowed_hosts_allowlist ... ok
+test real_ffmpeg_archive_extraction_benchmark ... ignored, manual real-archive benchmark; set BERGAMOT_FFMPEG_ARCHIVE
+test embedded_manifest_loads_and_has_ffmpeg ... ok
+test extraction_file_count_limit_is_enforced ... ok
+test tar_escaping_symlink_is_blocked ... ok
+test tar_escaping_hardlink_is_blocked ... ok
+test tar_decompressed_size_limit_is_enforced ... ok
+test imagemagick_manifest_and_verification ... FAILED
+test test_live_download_and_verify_all_platform_tools ... ignored, requires network to download real assets for platform verification
+test resolver_precedence_and_managed_tools_fallback ... ok
+test tar_file_count_limit_is_enforced ... ok
+test zip_symlink_entry_is_rejected ... ok
+test tar_path_traversal_is_blocked ... ok
+test zip_slip_path_traversal_is_blocked ... ok
+test zip_existing_hardlink_target_is_not_overwritten ... ok
+test zip_existing_symlink_parent_cannot_escape_destination ... ok
+test tar_symlink_parent_cannot_redirect_later_file_outside_destination ... ok
+test extraction_limits_are_enforced ... ok
+test python3_manifest_and_verification ... ok
+test ffmpeg_configuration_parsing_and_license_detection ... ok
+test python3_managed_tool_resolution_and_stub_rejection ... ok
+
+failures:
+
+---- imagemagick_manifest_and_verification stdout ----
+
+thread 'imagemagick_manifest_and_verification' (69904) panicked at crates/bergamot-core/tests/managed_tools.rs:771:14:
+Should verify valid magick with WEBP: Io(Os { code: 26, kind: ExecutableFileBusy, message: "Text file busy" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    imagemagick_manifest_and_verification
+
+test result: FAILED. 18 passed; 1 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p bergamot-core --test managed_tools`

@@ -1,0 +1,43 @@
+# Configuration for cargo-deny
+
+[advisories]
+# Keep unmaintained advisories actionable; suppress only the reviewed framework
+# transitives documented in docs/audits/security-dependencies-2026-11-15.md.
+unmaintained = "all"
+ignore = [
+    { id = "RUSTSEC-2024-0370", reason = "Unmaintained proc-macro-error is a transitive build dependency of the current Tauri macro graph, has no patched release, and cannot be replaced at this workspace boundary. Reassess when Tauri updates its compatible macro stack. https://rustsec.org/advisories/RUSTSEC-2024-0370.html" },
+    { id = "RUSTSEC-2026-0371", reason = "Unmaintained zbus_names is reached through the target-specific Tauri/keyring D-Bus graph; upstream merged it into zbus 6, but the current compatible parent crates still require the split crate. Reassess after those parents update. https://rustsec.org/advisories/RUSTSEC-2026-0371.html" },
+    { id = "RUSTSEC-2026-0370", reason = "Unmaintained zvariant is reached through the target-specific Tauri/keyring D-Bus graph; upstream merged its wire module into zbus 6, but the current compatible parent crates still require the split crate. Reassess after those parents update. https://rustsec.org/advisories/RUSTSEC-2026-0370.html" },
+    { id = "RUSTSEC-2026-0372", reason = "Unmaintained zvariant_derive is reached through the target-specific Tauri/keyring D-Bus graph; upstream moved the macros into zbus 6, but the current compatible parent crates still require the split crate. Reassess after those parents update. https://rustsec.org/advisories/RUSTSEC-2026-0372.html" },
+]
+
+[graph]
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+    { triple = "x86_64-apple-darwin" },
+    { triple = "aarch64-apple-darwin" },
+    { triple = "x86_64-pc-windows-msvc" },
+]
+
+[licenses]
+confidence-threshold = 0.8
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+    "BSL-1.0",
+    "0BSD",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
+    "MIT-0",
+]
+
+[licenses.private]
+ignore = true

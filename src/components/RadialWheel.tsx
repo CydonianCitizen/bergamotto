@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { errorText, ipc } from '../ipc';
 import type { ActionDescriptor, WheelPresentation } from '../types/actions';
 import { ActionIcon } from './ActionIcon';
+import ToolConsentDialog from './ToolConsentDialog';
 import { center, hitWedge, wedge } from './wheelGeometry';
 
 const pageSize = 8;
@@ -20,6 +21,12 @@ export default function RadialWheel() {
   const [page, setPage] = useState(0);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [consentTool, setConsentTool] = useState<{
+    id: string;
+    action: ActionDescriptor;
+    files: string[];
+    session: number | null;
+  } | null>(null);
   const model = useRef({ selection: empty, drag: null as WheelPresentation | null, page: 0 });
   const invoking = useRef(false);
   const active = drag ?? selection;
@@ -41,6 +48,14 @@ export default function RadialWheel() {
     setBusy(true);
     setNotice('');
     try {
+      const deps = await ipc.checkActionDependencies();
+      const status = deps[action.id];
+      if (status && status.source === 'missing') {
+        setConsentTool({ id: status.tool, action, files, session });
+        invoking.current = false;
+        setBusy(false);
+        return;
+      }
       await ipc.invokeAction(action.id, files, session);
       await hideWheel(session);
     } catch (error) {
@@ -258,6 +273,21 @@ export default function RadialWheel() {
           </div>
         ) : <span><MousePointer2 size={12} />{actions.length ? (dropRequired ? 'Drop files on a slice' : 'Choose an action') : active.files.length ? 'No matching actions' : dropRequired ? 'Waiting for files' : 'Drop files anywhere on the wheel'}</span>}
       </div>
+      {consentTool && (
+        <ToolConsentDialog
+          toolId={consentTool.id}
+          onClose={() => {
+            const session = consentTool.session;
+            setConsentTool(null);
+            void hideWheel(session);
+          }}
+          onInstalled={() => {
+            const { action, files, session } = consentTool;
+            setConsentTool(null);
+            void execute(action, files, session);
+          }}
+        />
+      )}
     </main>
   );
 }

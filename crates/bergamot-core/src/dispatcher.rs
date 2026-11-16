@@ -6,9 +6,11 @@ use tokio_util::sync::CancellationToken;
 use crate::descriptor::{
     ActionInvocation, ActionProgress, ActionResult, Cardinality, ExecutorConfig, OutputMode,
 };
-use crate::executors::process;
-use crate::executors::webhook::{KeyringSecretProvider, SecretProvider, WebhookExecutor};
-use crate::executors::ExecutionError;
+use crate::executors::process::{self, StdoutPolicy};
+use crate::executors::webhook::{
+    KeyringSecretProvider, ResponseTarget, SecretProvider, WebhookExecutor,
+};
+use crate::executors::{ExecutionError, MAX_AGGREGATE_OUTPUT_BYTES};
 use crate::registry::ActionRegistry;
 use crate::staging::StagedFile;
 use crate::{AppSettings, SettingsStore};
@@ -92,38 +94,70 @@ impl Dispatcher {
             } else {
                 None
             };
-            let mut output = match &action.executor {
+            let retain_stdout = matches!(
+                action.output.mode,
+                OutputMode::Stdout | OutputMode::Clipboard
+            );
+            let output = match &action.executor {
                 ExecutorConfig::Webhook { .. } => {
-                    self.webhook.execute(&action.executor, job, cancel).await?
+                    let target = match staged.as_ref() {
+                        Some(staged) => ResponseTarget::File(staged.path()),
+                        None if matches!(
+                            action.output.mode,
+                            OutputMode::Stdout | OutputMode::Clipboard
+                        ) =>
+                        {
+                            ResponseTarget::Capture
+                        }
+                        None => ResponseTarget::Discard,
+                    };
+                    self.webhook
+                        .execute_with_response(&action.executor, job, target, cancel)
+                        .await?
                 }
                 _ => {
                     let path = staged.as_ref().map(StagedFile::path);
-                    process::execute_with_settings(&action.executor, job, path, cancel, &settings)
-                        .await?
+                    process::execute_with_settings_and_policy(
+                        &action.executor,
+                        job,
+                        path,
+                        cancel,
+                        &settings,
+                        if retain_stdout {
+                            StdoutPolicy::Capture
+                        } else {
+                            StdoutPolicy::Discard
+                        },
+                    )
+                    .await?
                 }
             };
             if cancel.is_cancelled() {
                 return Err(ExecutionError::Cancelled);
             }
-            if let Some(mut staged) = staged {
-                if matches!(&action.executor, ExecutorConfig::Webhook { .. }) {
-                    let body = std::mem::take(&mut output.stdout);
-                    staged = tokio::task::spawn_blocking(move || {
-                        std::fs::write(staged.path(), body)?;
-                        Ok::<_, std::io::Error>(staged)
-                    })
-                    .await
-                    .map_err(std::io::Error::other)??;
-                }
+            let retained_output_bytes = result
+                .stderr
+                .len()
+                .saturating_add(output.stderr.len())
+                .saturating_add(if retain_stdout {
+                    text_output.len().saturating_add(output.stdout.len())
+                } else {
+                    0
+                });
+            if retained_output_bytes > MAX_AGGREGATE_OUTPUT_BYTES as usize {
+                return Err(ExecutionError::OutputLimit {
+                    stream: "action output",
+                    limit: MAX_AGGREGATE_OUTPUT_BYTES,
+                });
+            }
+
+            if let Some(staged) = staged {
                 if cancel.is_cancelled() {
                     return Err(ExecutionError::Cancelled);
                 }
                 result.output_files.push(staged.commit()?);
             }
-            if matches!(
-                action.output.mode,
-                OutputMode::Stdout | OutputMode::Clipboard
-            ) {
+            if retain_stdout {
                 text_output.extend(output.stdout);
             }
             result.stderr.extend(output.stderr);

@@ -1,0 +1,175 @@
+{
+  "command": "cargo test --workspace",
+  "code_commit": "52084c8",
+  "platform": "Linux x64",
+  "repetitions": 20,
+  "peak_concurrent_runs": 4,
+  "started_utc": "2026-11-15T16:54:51.747208+00:00",
+  "finished_utc": "2026-11-15T16:55:25.634279+00:00",
+  "wall_seconds": 33.887,
+  "total_passed": 2160,
+  "total_failed": 0,
+  "ignored_per_run": 5,
+  "results": [
+    {
+      "run": 1,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 7.297
+    },
+    {
+      "run": 2,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 7.251
+    },
+    {
+      "run": 3,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 7.24
+    },
+    {
+      "run": 4,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 7.243
+    },
+    {
+      "run": 5,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.677
+    },
+    {
+      "run": 6,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.718
+    },
+    {
+      "run": 7,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.664
+    },
+    {
+      "run": 8,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.797
+    },
+    {
+      "run": 9,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.604
+    },
+    {
+      "run": 10,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.601
+    },
+    {
+      "run": 11,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.723
+    },
+    {
+      "run": 12,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.605
+    },
+    {
+      "run": 13,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.611
+    },
+    {
+      "run": 14,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.609
+    },
+    {
+      "run": 15,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.509
+    },
+    {
+      "run": 16,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.551
+    },
+    {
+      "run": 17,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.633
+    },
+    {
+      "run": 18,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.755
+    },
+    {
+      "run": 19,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.645
+    },
+    {
+      "run": 20,
+      "exit_code": 0,
+      "passed": 108,
+      "failed": 0,
+      "ignored": 5,
+      "duration_seconds": 6.561
+    }
+  ]
+}

@@ -11,10 +11,37 @@ export interface AppSettings {
   toolOverrides: Record<string, string>;
 }
 
+export type ToolSource = 'system' | 'managed' | 'missing';
+
 export interface ToolStatus {
   tool: string;
   path: string | null;
   message: string | null;
+  source: ToolSource;
+}
+
+export interface ManagedToolInfo {
+  id: string;
+  name: string;
+  description: string;
+  status: ToolSource;
+  version: string | null;
+  installedPath: string | null;
+  licenseName: string;
+  licenseUrl: string;
+  isCopyleft: boolean;
+  sourceUrl: string;
+  estimatedSizeBytes: number;
+  installedSizeBytes: number | null;
+  supportedOnCurrentPlatform: boolean;
+  manualInstructions: string | null;
+}
+
+export interface ToolDownloadProgress {
+  tool: string;
+  downloadedBytes: number;
+  totalBytes: number | null;
+  stage: 'downloading' | 'extracting' | 'verifying' | 'completed' | 'failed';
 }
 
 export type PackCollision = 'reject' | 'overwrite' | 'duplicate';

@@ -16,6 +16,7 @@ fn settings_round_trip_and_failed_updates_keep_previous_values() {
             temp.path().join("test bin").to_string_lossy().into_owned(),
         )]
         .into(),
+        managed_tools_dir: None,
     };
     settings
         .update(|settings| *settings = custom.clone())

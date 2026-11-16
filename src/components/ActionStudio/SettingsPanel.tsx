@@ -1,7 +1,8 @@
-import { Check, Copy, Keyboard } from 'lucide-react';
+import { Check, Copy, Download, FileText, Keyboard, RefreshCw, Trash2, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { errorText, ipc } from '../../ipc';
-import type { AppSettings, ModifierKey } from '../../types/actions';
+import type { AppSettings, ManagedToolInfo, ModifierKey } from '../../types/actions';
+import ToolConsentDialog from '../ToolConsentDialog';
 import { Field } from './Fields';
 
 export default function SettingsPanel({ settings, close }: { settings: AppSettings; close: () => void }) {
@@ -17,8 +18,45 @@ export default function SettingsPanel({ settings, close }: { settings: AppSettin
   const [overrides, setOverrides] = useState(Object.entries(settings.toolOverrides).map(([tool, path]) => ({ tool, path })));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [managedTools, setManagedTools] = useState<ManagedToolInfo[]>([]);
+  const [activeConsentTool, setActiveConsentTool] = useState<string | null>(null);
+  const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
 
-  useEffect(() => { dialog.current?.showModal(); }, []);
+  async function loadManagedTools() {
+    try {
+      const list = await ipc.getManagedToolsStatus();
+      setManagedTools(list);
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    dialog.current?.showModal();
+    void loadManagedTools();
+  }, []);
+
+  async function handleUninstall(toolId: string) {
+    setBusy(true);
+    try {
+      await ipc.uninstallManagedTool(toolId);
+      await loadManagedTools();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyToolCmd(toolId: string, cmd: string) {
+    try {
+      await navigator.clipboard.writeText(cmd);
+      setCopiedCmd(toolId);
+      setTimeout(() => setCopiedCmd(null), 2000);
+    } catch {
+      // ignore
+    }
+  }
 
   async function checkShortcut(candidate: string) {
     if (!candidate.trim()) {
@@ -86,6 +124,15 @@ export default function SettingsPanel({ settings, close }: { settings: AppSettin
       setTimeout(() => setCopiedHint(false), 2000);
     } catch {
       // ignore
+    }
+  }
+
+  async function openThirdPartyLicenses() {
+    setError('');
+    try {
+      await ipc.openThirdPartyLicenses();
+    } catch (reason) {
+      setError(errorText(reason));
     }
   }
 
@@ -272,6 +319,107 @@ export default function SettingsPanel({ settings, close }: { settings: AppSettin
               Add override
             </button>
           </fieldset>
+
+          {/* Managed Tools Section */}
+          <div className="settings-section managed-tools-section">
+            <h3 className="settings-subtitle">
+              <Wrench size={18} /> Managed Tools (Fallback Tooling)
+            </h3>
+            <p className="field-hint">
+              Required by starter actions. Overrides, custom paths, and system PATH are prioritized first; Bergamotto falls back to managed tools only if missing.
+            </p>
+
+            <div className="managed-tools-list">
+              {managedTools.map(tool => (
+                <div key={tool.id} className="managed-tool-card">
+                  <div className="managed-tool-header">
+                    <div className="managed-tool-title">
+                      <strong>{tool.name}</strong>
+                      <span className={`status-badge status-${tool.status}`}>
+                        {tool.status === 'system'
+                          ? 'System'
+                          : tool.status === 'managed'
+                          ? 'Managed'
+                          : 'Missing'}
+                      </span>
+                    </div>
+                    <div className="managed-tool-meta">
+                      <span className="meta-item">
+                        License: {tool.licenseName}
+                        {tool.isCopyleft ? ' (Copyleft)' : ''}
+                      </span>
+                      {tool.status === 'managed' && tool.installedSizeBytes && (
+                        <span className="meta-item">
+                          Disk: {(tool.installedSizeBytes / (1024 * 1024)).toFixed(1)} MB
+                        </span>
+                      )}
+                      {tool.status === 'missing' && tool.estimatedSizeBytes > 0 && (
+                        <span className="meta-item">
+                          Download: ~{(tool.estimatedSizeBytes / (1024 * 1024)).toFixed(1)} MB
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {tool.installedPath && (
+                    <div className="managed-tool-path">
+                      <code>{tool.installedPath}</code>
+                    </div>
+                  )}
+
+                  <div className="managed-tool-actions">
+                    {tool.status === 'managed' ? (
+                      <>
+                        <button
+                          type="button"
+                          className="button secondary sm icon-text"
+                          onClick={() => setActiveConsentTool(tool.id)}
+                        >
+                          <RefreshCw size={13} /> Reinstall
+                        </button>
+                        <button
+                          type="button"
+                          className="button secondary sm icon-text danger"
+                          onClick={() => void handleUninstall(tool.id)}
+                        >
+                          <Trash2 size={13} /> Remove
+                        </button>
+                      </>
+                    ) : tool.supportedOnCurrentPlatform ? (
+                      <button
+                        type="button"
+                        className="button accent sm icon-text"
+                        onClick={() => setActiveConsentTool(tool.id)}
+                      >
+                        <Download size={13} /> Install Managed Tool
+                      </button>
+                    ) : null}
+
+                    {tool.manualInstructions && (
+                      <div className="tool-cmd-hint">
+                        <span>System command:</span>
+                        <code>{tool.manualInstructions}</code>
+                        <button
+                          type="button"
+                          className="button secondary sm icon-text"
+                          onClick={() => void copyToolCmd(tool.id, tool.manualInstructions!)}
+                          title="Copy command"
+                        >
+                          {copiedCmd === tool.id ? <Check size={12} /> : <Copy size={12} />}
+                          {copiedCmd === tool.id ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="settings-section">
+            <button className="button secondary sm icon-text" type="button" onClick={() => void openThirdPartyLicenses()}>
+              <FileText size={15} /> Open source licenses
+            </button>
+          </div>
         </fieldset>
 
         {error && (
@@ -288,6 +436,17 @@ export default function SettingsPanel({ settings, close }: { settings: AppSettin
           </button>
         </div>
       </form>
+
+      {activeConsentTool && (
+        <ToolConsentDialog
+          toolId={activeConsentTool}
+          onClose={() => setActiveConsentTool(null)}
+          onInstalled={() => {
+            setActiveConsentTool(null);
+            void loadManagedTools();
+          }}
+        />
+      )}
     </dialog>
   );
 }

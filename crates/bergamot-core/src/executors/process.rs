@@ -1,7 +1,8 @@
+use std::collections::VecDeque;
 use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::{absolute, Path, PathBuf};
-use std::process::Stdio;
+use std::process::{Output, Stdio};
 use std::time::Duration;
 
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -13,7 +14,15 @@ use tokio_util::sync::CancellationToken;
 use crate::descriptor::ExecutorConfig;
 use crate::AppSettings;
 
-use super::{ExecutionError, ExecutionOutput};
+use super::{
+    ExecutionError, ExecutionOutput, MAX_CAPTURED_OUTPUT_BYTES, MAX_STDERR_DIAGNOSTIC_BYTES,
+};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum StdoutPolicy {
+    Capture,
+    Discard,
+}
 
 /// Runs a direct command or a script file with separate OS arguments.
 /// `${inputs}` expands only when it occupies an entire argument.
@@ -35,6 +44,25 @@ pub async fn execute_with_settings(
     cancel: &CancellationToken,
     settings: &AppSettings,
 ) -> Result<ExecutionOutput, ExecutionError> {
+    execute_with_settings_and_policy(
+        executor,
+        files,
+        output,
+        cancel,
+        settings,
+        StdoutPolicy::Capture,
+    )
+    .await
+}
+
+pub(crate) async fn execute_with_settings_and_policy(
+    executor: &ExecutorConfig,
+    files: &[PathBuf],
+    output: Option<&Path>,
+    cancel: &CancellationToken,
+    settings: &AppSettings,
+    stdout_policy: StdoutPolicy,
+) -> Result<ExecutionOutput, ExecutionError> {
     if files.is_empty() {
         return Err(ExecutionError::InvalidConfig(
             "an executor requires at least one input file".to_owned(),
@@ -46,6 +74,11 @@ pub async fn execute_with_settings(
 
     let inputs = files.iter().map(absolute).collect::<io::Result<Vec<_>>>()?;
     let output = output.map(absolute).transpose()?;
+    let stdout_policy = if output.is_some() {
+        StdoutPolicy::Discard
+    } else {
+        stdout_policy
+    };
     let default_work_dir = inputs[0].parent().ok_or_else(|| {
         ExecutionError::InvalidConfig("the first input has no parent directory".to_owned())
     })?;
@@ -66,7 +99,8 @@ pub async fn execute_with_settings(
                 None => default_work_dir.to_path_buf(),
             };
 
-            let mut command = Command::new(resolve_program(program, settings, &search_path)?);
+            let mut command =
+                Command::new(resolve_program(program, settings, &search_path, cancel).await?);
             for argument in args {
                 for expanded in expand_argument(argument, &inputs, output.as_deref(), &work_dir)? {
                     command.arg(expanded);
@@ -82,7 +116,7 @@ pub async fn execute_with_settings(
             timeout_seconds,
         } => {
             let work_dir = default_work_dir;
-            let program = resolve_program(interpreter, settings, &search_path)?;
+            let program = resolve_program(interpreter, settings, &search_path, cancel).await?;
             let powershell = is_powershell(program.to_str().unwrap_or(interpreter));
             let script =
                 resolve_script(script_path.as_deref(), script_body.as_deref(), powershell)?;
@@ -127,8 +161,48 @@ pub async fn execute_with_settings(
         ));
     }
 
+    command.env("PATH", search_path);
+    let output =
+        run_command_with_policy(&mut command, timeout_seconds, cancel, stdout_policy).await?;
+    if !output.status.success() {
+        return Err(ExecutionError::ProcessFailed {
+            code: output.status.code(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        });
+    }
+
+    Ok(ExecutionOutput {
+        stdout: output.stdout,
+        stderr: output.stderr,
+    })
+}
+
+/// Runs one child as a process group, draining both output pipes under a shared
+/// cancellation/deadline lifecycle so descendants cannot keep a caller waiting.
+pub(crate) async fn run_command(
+    command: &mut Command,
+    timeout_seconds: u32,
+    cancel: &CancellationToken,
+) -> Result<Output, ExecutionError> {
+    run_command_with_policy(command, timeout_seconds, cancel, StdoutPolicy::Capture).await
+}
+
+async fn run_command_with_policy(
+    command: &mut Command,
+    timeout_seconds: u32,
+    cancel: &CancellationToken,
+    stdout_policy: StdoutPolicy,
+) -> Result<Output, ExecutionError> {
+    if cancel.is_cancelled() {
+        return Err(ExecutionError::Cancelled);
+    }
+    if timeout_seconds == 0 {
+        return Err(ExecutionError::InvalidConfig(
+            "process timeout must be greater than zero".to_owned(),
+        ));
+    }
+
     command
-        .env("PATH", search_path)
         .kill_on_drop(true)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -143,15 +217,20 @@ pub async fn execute_with_settings(
         let stdout = leader.stdout.take();
         let stderr = leader.stderr.take();
         let wait_and_read = async move {
-            // The deadline stays active while descendants hold inherited pipes open.
-            tokio::try_join!(leader.wait(), read_pipe(stdout), read_pipe(stderr))
+            // Keep the deadline active while descendants hold inherited pipes open.
+            let wait = async move { leader.wait().await.map_err(ExecutionError::Io) };
+            tokio::try_join!(
+                wait,
+                read_stdout(stdout, stdout_policy),
+                read_stderr(stderr),
+            )
         };
         let timeout = Duration::from_secs(u64::from(timeout_seconds));
         tokio::select! {
             biased;
             _ = cancel.cancelled() => Err(ExecutionError::Cancelled),
             result = tokio::time::timeout(timeout, wait_and_read) => match result {
-                Ok(result) => result.map_err(ExecutionError::Io),
+                Ok(result) => result,
                 Err(_) => Err(ExecutionError::TimedOut(timeout_seconds)),
             },
         }
@@ -165,15 +244,17 @@ pub async fn execute_with_settings(
         }
     };
     if !status.success() {
+        // A descendant may have closed both output pipes and outlived the leader.
         group.terminate().await;
-        return Err(ExecutionError::ProcessFailed {
-            code: status.code(),
-            stderr: String::from_utf8_lossy(&stderr).into_owned(),
-        });
+    } else {
+        group.active = false;
     }
 
-    group.active = false;
-    Ok(ExecutionOutput { stdout, stderr })
+    Ok(Output {
+        status,
+        stdout,
+        stderr,
+    })
 }
 
 fn resolve_working_directory(
@@ -290,16 +371,65 @@ fn expand_argument(
     Ok(vec![result])
 }
 
-pub fn resolve_dependency(
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ToolSource {
+    System,
+    Managed,
+    Missing,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolvedDependency {
+    pub path: PathBuf,
+    pub source: ToolSource,
+}
+
+const PYTHON_PROBE_TIMEOUT_SECONDS: u32 = 5;
+
+#[cfg(target_os = "macos")]
+const XCODE_SELECT_TIMEOUT_SECONDS: u32 = 5;
+
+pub async fn resolve_dependency(
     executor: &ExecutorConfig,
     settings: &AppSettings,
+    cancel: &CancellationToken,
 ) -> Result<Option<PathBuf>, ExecutionError> {
+    resolve_dependency_detailed(executor, settings, cancel)
+        .await
+        .map(|res| res.map(|d| d.path))
+}
+
+pub async fn resolve_dependency_detailed(
+    executor: &ExecutorConfig,
+    settings: &AppSettings,
+    cancel: &CancellationToken,
+) -> Result<Option<ResolvedDependency>, ExecutionError> {
+    if cancel.is_cancelled() {
+        return Err(ExecutionError::Cancelled);
+    }
+
     let program = match executor {
         ExecutorConfig::Process { program, .. } => program,
         ExecutorConfig::Script { interpreter, .. } => interpreter,
         ExecutorConfig::Webhook { .. } => return Ok(None),
     };
-    resolve_program(program, settings, &search_path(executor, settings)?).map(Some)
+
+    let search_path = search_path(executor, settings)?;
+    let path = resolve_program(program, settings, &search_path, cancel).await?;
+    let managed_base = settings.managed_tools_dir();
+    let source = if let Some(ref base) = managed_base {
+        if path.starts_with(base) {
+            ToolSource::Managed
+        } else {
+            ToolSource::System
+        }
+    } else {
+        ToolSource::System
+    };
+
+    Ok(Some(ResolvedDependency { path, source }))
 }
 
 fn search_path(
@@ -313,17 +443,25 @@ fn search_path(
         }),
         _ => None,
     };
-    let inherited = manifest_path
-        .map(OsString::from)
-        .or_else(|| std::env::var_os("PATH"))
-        .unwrap_or_default();
-    let directories = settings
-        .custom_paths
-        .iter()
-        .map(PathBuf::from)
-        .chain(default_tool_paths())
-        .chain(std::env::split_paths(&inherited))
-        .filter(|path| path.is_absolute());
+    let directories: Vec<PathBuf> = if let Some(path) = manifest_path {
+        settings
+            .custom_paths
+            .iter()
+            .map(PathBuf::from)
+            .chain(std::env::split_paths(path))
+            .filter(|path| path.is_absolute())
+            .collect()
+    } else {
+        let inherited = std::env::var_os("PATH").unwrap_or_default();
+        settings
+            .custom_paths
+            .iter()
+            .map(PathBuf::from)
+            .chain(std::env::split_paths(&inherited))
+            .chain(default_tool_paths())
+            .filter(|path| path.is_absolute())
+            .collect()
+    };
     std::env::join_paths(directories)
         .map_err(|_| ExecutionError::InvalidConfig("invalid executable search path".into()))
 }
@@ -342,10 +480,11 @@ fn default_tool_paths() -> Vec<PathBuf> {
     Vec::new()
 }
 
-fn resolve_program(
+async fn resolve_program(
     program: &str,
     settings: &AppSettings,
     search_path: &OsStr,
+    cancel: &CancellationToken,
 ) -> Result<PathBuf, ExecutionError> {
     reject_windows_batch_file(program)?;
     let replacement = settings.tool_overrides.get(program);
@@ -353,15 +492,97 @@ fn resolve_program(
     reject_windows_batch_file(configured)?;
     let path = Path::new(configured);
     let found = if replacement.is_some() || path.file_name() != Some(path.as_os_str()) {
-        executable_at(absolute(path)?)
+        match executable_at(absolute(path)?) {
+            Some(candidate) => validate_candidate(program, candidate, cancel).await?,
+            None => None,
+        }
     } else {
-        std::env::split_paths(search_path).find_map(|directory| executable_at(directory.join(path)))
+        let mut candidate_names = vec![configured];
+        if cfg!(windows) && configured.eq_ignore_ascii_case("python3") {
+            candidate_names.push("python");
+        }
+        let mut found = None;
+        'directories: for directory in std::env::split_paths(search_path) {
+            for name in &candidate_names {
+                let p = Path::new(name);
+                if let Some(cand) = executable_at(directory.join(p)) {
+                    if let Some(valid) = validate_candidate(program, cand, cancel).await? {
+                        found = Some(valid);
+                        break 'directories;
+                    }
+                }
+            }
+        }
+        found
     };
+    let found = found.or_else(|| {
+        let tools_dir = settings.managed_tools_dir()?;
+        crate::managed_tools::resolve_managed_binary(&tools_dir, configured)
+    });
     found.ok_or_else(|| {
         ExecutionError::InvalidConfig(format!(
             "Executable {configured:?} was not found or is not executable"
         ))
     })
+}
+
+async fn validate_candidate(
+    program: &str,
+    path: PathBuf,
+    cancel: &CancellationToken,
+) -> Result<Option<PathBuf>, ExecutionError> {
+    let is_python =
+        program.eq_ignore_ascii_case("python3") || program.eq_ignore_ascii_case("python");
+    if !is_python {
+        return Ok(Some(path));
+    }
+
+    #[cfg(windows)]
+    {
+        let path_str = path.to_string_lossy();
+        if path_str.contains(r"\Microsoft\WindowsApps\")
+            || path_str.contains(r"/Microsoft/WindowsApps/")
+            || path_str.ends_with(r"\Microsoft\WindowsApps")
+        {
+            return Ok(None);
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if path == Path::new("/usr/bin/python3") {
+            let mut command = Command::new("xcode-select");
+            command.arg("-p");
+            let has_clt =
+                match run_command(&mut command, XCODE_SELECT_TIMEOUT_SECONDS, cancel).await {
+                    Ok(output) => output.status.success(),
+                    Err(ExecutionError::Cancelled) => return Err(ExecutionError::Cancelled),
+                    Err(_) => false,
+                };
+            if !has_clt {
+                return Ok(None);
+            }
+        }
+    }
+
+    if !verify_python_candidate(&path, cancel).await? {
+        return Ok(None);
+    }
+
+    Ok(Some(path))
+}
+
+async fn verify_python_candidate(
+    path: &Path,
+    cancel: &CancellationToken,
+) -> Result<bool, ExecutionError> {
+    let mut command = Command::new(path);
+    command.args(["-c", "import sys; sys.exit(0)"]);
+    match run_command(&mut command, PYTHON_PROBE_TIMEOUT_SECONDS, cancel).await {
+        Ok(output) => Ok(output.status.success()),
+        Err(ExecutionError::Cancelled) => Err(ExecutionError::Cancelled),
+        Err(_) => Ok(false),
+    }
 }
 
 fn executable_at(path: PathBuf) -> Option<PathBuf> {
@@ -444,23 +665,96 @@ impl Drop for ActiveGroup {
     }
 }
 
-async fn read_pipe(pipe: Option<impl AsyncRead + Unpin>) -> io::Result<Vec<u8>> {
+async fn read_stdout(
+    pipe: Option<impl AsyncRead + Unpin>,
+    policy: StdoutPolicy,
+) -> Result<Vec<u8>, ExecutionError> {
     let mut output = Vec::new();
     if let Some(mut pipe) = pipe {
-        pipe.read_to_end(&mut output).await?;
+        let mut buffer = [0_u8; 8192];
+        loop {
+            let count = pipe.read(&mut buffer).await?;
+            if count == 0 {
+                break;
+            }
+            if policy == StdoutPolicy::Capture {
+                let remaining = MAX_CAPTURED_OUTPUT_BYTES as usize - output.len();
+                if count > remaining {
+                    return Err(ExecutionError::OutputLimit {
+                        stream: "process stdout",
+                        limit: MAX_CAPTURED_OUTPUT_BYTES,
+                    });
+                }
+                output.extend_from_slice(&buffer[..count]);
+            }
+        }
     }
     Ok(output)
+}
+
+async fn read_stderr(pipe: Option<impl AsyncRead + Unpin>) -> Result<Vec<u8>, ExecutionError> {
+    let mut tail = VecDeque::with_capacity(MAX_STDERR_DIAGNOSTIC_BYTES);
+    if let Some(mut pipe) = pipe {
+        let mut buffer = [0_u8; 8192];
+        loop {
+            let count = pipe.read(&mut buffer).await?;
+            if count == 0 {
+                break;
+            }
+            let overflow = tail
+                .len()
+                .saturating_add(count)
+                .saturating_sub(MAX_STDERR_DIAGNOSTIC_BYTES);
+            tail.drain(..overflow);
+            tail.extend(&buffer[..count]);
+        }
+    }
+    Ok(tail.into_iter().collect())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    use std::fs;
+    #[cfg(unix)]
+    use std::io::Write;
 
     #[test]
     fn placeholders_in_inserted_paths_are_literal() {
         let inputs = [PathBuf::from("${output}.txt")];
         let expanded = expand_argument("prefix=${input}", &inputs, None, Path::new("."));
         assert_eq!(expanded.unwrap(), [OsString::from("prefix=${output}.txt")]);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn shared_runner_kills_descendants_when_leader_exits_unsuccessfully() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let script = temp.path().join("leader.sh");
+        let heartbeat = temp.path().join("heartbeat");
+        // The child closes the captured pipes but keeps running after its leader exits.
+        // This exercises the nonzero-status cleanup path rather than pipe-drain timeout.
+        let mut fixture = fs::File::create(&script).unwrap();
+        fixture
+            .write_all(b"#!/bin/sh\n(while :; do printf . >> \"$1\"; sleep 0.05; done) >/dev/null 2>&1 &\nwhile [ ! -e \"$1\" ]; do sleep 0.01; done\nexit 23\n")
+            .unwrap();
+        fixture.sync_all().unwrap();
+        drop(fixture);
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+
+        let mut command = Command::new(&script);
+        command.arg(&heartbeat);
+        let output = run_command(&mut command, 3, &CancellationToken::new())
+            .await
+            .unwrap();
+
+        assert_eq!(output.status.code(), Some(23));
+        let size = fs::metadata(&heartbeat).unwrap().len();
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert_eq!(fs::metadata(&heartbeat).unwrap().len(), size);
     }
 
     #[cfg(windows)]

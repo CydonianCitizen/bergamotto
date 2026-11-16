@@ -1,0 +1,272 @@
+# cargo-about policy. Keep this SPDX set in sync with [licenses].allow in
+# deny.toml; both configurations must accept exactly the same identifiers.
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+    "BSL-1.0",
+    "0BSD",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
+    "MIT-0",
+]
+
+# Audit the complete distributable workspace dependency graph for every
+# supported release target. Build and development dependencies are retained
+# as a conservative license inventory.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+
+ignore-build-dependencies = false
+ignore-dev-dependencies = false
+ignore-transitive-dependencies = false
+
+# The three unpublished workspace crates are first-party project code.
+private = { ignore = true }
+
+# `ring`'s manifest expression and top-level LICENSE are not parsed reliably.
+# Pin the full Apache and ISC text files from the published package.
+[ring.clarify]
+license = "Apache-2.0 AND ISC"
+
+[[ring.clarify.files]]
+path = "LICENSE-BoringSSL"
+license = "Apache-2.0"
+checksum = "005fc765ddc5115da796cca915baa9557abae13ff35e0a47c47affc56f6c414d"
+
+[[ring.clarify.files]]
+path = "LICENSE-other-bits"
+license = "ISC"
+checksum = "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
+
+[[ring.clarify.files]]
+path = "src/polyfill/once_cell/LICENSE-APACHE"
+license = "Apache-2.0"
+checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+
+# Verified package license files recovered from pinned upstream revisions. These paths stay
+# workspace-relative in this committed config; the collector expands them to absolute paths
+# only in a temporary cargo-about config so the checked-in files remain portable.
+
+[alloc-stdlib.clarify]
+license = "BSD-3-Clause"
+
+[[alloc-stdlib.clarify.files]]
+path = "third-party/license-texts/alloc-stdlib-0.3.0/LICENSE"
+license = "BSD-3-Clause"
+checksum = "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
+
+[block2.clarify]
+license = "MIT"
+
+[[block2.clarify.files]]
+path = "third-party/license-texts/block2-0.6.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[clipboard-win.clarify]
+license = "BSL-1.0"
+
+[[clipboard-win.clarify.files]]
+path = "third-party/license-texts/clipboard-win-5.4.3/LICENSE"
+license = "BSL-1.0"
+checksum = "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+
+[dispatch2.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[dispatch2.clarify.files]]
+path = "third-party/license-texts/dispatch2-0.3.1/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[dlopen2.clarify]
+license = "MIT"
+
+[[dlopen2.clarify.files]]
+path = "third-party/license-texts/dlopen2-0.8.2/LICENSE"
+license = "MIT"
+checksum = "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2"
+
+[dlopen2_derive.clarify]
+license = "MIT"
+
+[[dlopen2_derive.clarify.files]]
+path = "third-party/license-texts/dlopen2_derive-0.4.3/LICENSE"
+license = "MIT"
+checksum = "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2"
+
+[libappindicator-sys.clarify]
+license = "Apache-2.0 OR MIT"
+
+[[libappindicator-sys.clarify.files]]
+path = "third-party/license-texts/libappindicator-sys-0.9.0/LICENSE-APACHE"
+license = "Apache-2.0"
+checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+
+[[libappindicator-sys.clarify.files]]
+path = "third-party/license-texts/libappindicator-sys-0.9.0/LICENSE-MIT"
+license = "MIT"
+checksum = "eb227437252b2a7a9c1fc342c93ade1f3d7ce38cc6dd754f613db07d53ceff0b"
+
+[objc2.clarify]
+license = "MIT"
+
+[[objc2.clarify.files]]
+path = "third-party/license-texts/objc2-0.6.5/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-app-kit.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[objc2-app-kit.clarify.files]]
+path = "third-party/license-texts/objc2-app-kit-0.3.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-core-foundation.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[objc2-core-foundation.clarify.files]]
+path = "third-party/license-texts/objc2-core-foundation-0.3.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-core-graphics.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[objc2-core-graphics.clarify.files]]
+path = "third-party/license-texts/objc2-core-graphics-0.3.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-core-services.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[objc2-core-services.clarify.files]]
+path = "third-party/license-texts/objc2-core-services-0.3.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-encode.clarify]
+license = "MIT"
+
+[[objc2-encode.clarify.files]]
+path = "third-party/license-texts/objc2-encode-4.1.0/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-exception-helper.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[objc2-exception-helper.clarify.files]]
+path = "third-party/license-texts/objc2-exception-helper-0.1.1/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-io-surface.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[objc2-io-surface.clarify.files]]
+path = "third-party/license-texts/objc2-io-surface-0.3.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-quartz-core.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[objc2-quartz-core.clarify.files]]
+path = "third-party/license-texts/objc2-quartz-core-0.3.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[objc2-web-kit.clarify]
+license = "Zlib OR Apache-2.0 OR MIT"
+
+[[objc2-web-kit.clarify.files]]
+path = "third-party/license-texts/objc2-web-kit-0.3.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"
+
+[selectors.clarify]
+license = "MPL-2.0"
+
+[[selectors.clarify.files]]
+path = "third-party/license-texts/selectors-0.38.0/LICENSE-MPL-2.0.txt"
+license = "MPL-2.0"
+checksum = "1a389c0a135f37855baa2fb879f86ed111d7facf8b0d5188330b35a22c4428a1"
+
+[tauri-plugin.clarify]
+license = "Apache-2.0 OR MIT"
+
+[[tauri-plugin.clarify.files]]
+path = "third-party/license-texts/tauri-plugin-2.7.2/LICENSE-MIT"
+license = "MIT"
+checksum = "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d"
+
+[[tauri-plugin.clarify.files]]
+path = "third-party/license-texts/tauri-plugin-2.7.2/LICENSE-APACHE-2.0"
+license = "Apache-2.0"
+checksum = "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+
+[uuid-simd.clarify]
+license = "MIT"
+
+[[uuid-simd.clarify.files]]
+path = "third-party/license-texts/uuid-simd-0.8.0/LICENSE"
+license = "MIT"
+checksum = "71674605ec4c087fe9eb534e3e4f9e26eb2e4aabcd76a29fd156c6a844d44b3d"
+
+[vsimd.clarify]
+license = "MIT"
+
+[[vsimd.clarify.files]]
+path = "third-party/license-texts/vsimd-0.8.0/LICENSE"
+license = "MIT"
+checksum = "71674605ec4c087fe9eb534e3e4f9e26eb2e4aabcd76a29fd156c6a844d44b3d"
+
+[webview2-com.clarify]
+license = "MIT"
+
+[[webview2-com.clarify.files]]
+path = "third-party/license-texts/webview2-com-0.39.1/LICENSE"
+license = "MIT"
+checksum = "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
+
+[webview2-com-macros.clarify]
+license = "MIT"
+
+[[webview2-com-macros.clarify.files]]
+path = "third-party/license-texts/webview2-com-macros-0.8.1/LICENSE"
+license = "MIT"
+checksum = "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
+
+[webview2-com-sys.clarify]
+license = "MIT"
+
+[[webview2-com-sys.clarify.files]]
+path = "third-party/license-texts/webview2-com-sys-0.39.1/LICENSE"
+license = "MIT"
+checksum = "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
+
+# Additional verified fallback entries added after registry package-scope validation.
+
+[objc2-foundation.clarify]
+license = "MIT"
+
+[[objc2-foundation.clarify.files]]
+path = "third-party/license-texts/objc2-foundation-0.3.2/LICENSE-MIT.txt"
+license = "MIT"
+checksum = "b8da543ff3646f13169e34cd178c3a741ade9bdc74747296ed8abcb78d49ff69"

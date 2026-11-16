@@ -1,0 +1,7 @@
+warning[license-not-encountered]: license was not encountered
+   ┌─ /home/thomas/Documents/Projects/bergamotto/deny.toml:22:6
+   │
+22 │     "Unicode-DFS-2016",
+   │      ━━━━━━━━━━━━━━━━ unmatched license allowance
+
+licenses ok

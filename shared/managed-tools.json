@@ -1,0 +1,200 @@
+{
+  "$schema": "./schemas/managed-tools.schema.json",
+  "schemaVersion": 1,
+  "tools": {
+    "ffmpeg": {
+      "name": "FFmpeg",
+      "description": "Video and audio processing engine (required for MP4 compression and MP3 extraction).",
+      "license": {
+        "name": "GPL-3.0",
+        "url": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "isCopyleft": true,
+        "sourceUrl": "https://ffmpeg.org/download.html"
+      },
+      "verification": {
+        "command": [
+          "-version"
+        ],
+        "encodersCommand": [
+          "-encoders"
+        ],
+        "requiredEncoders": [
+          "libx264",
+          "libmp3lame"
+        ]
+      },
+      "platforms": {
+        "windows-x64": {
+          "version": "9.0.2",
+          "url": "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.2-essentials_build.zip",
+          "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
+          "archiveFormat": "zip",
+          "binaryPath": "ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe",
+          "sizeBytes": 105423872,
+          "hashSource": "Official SHA-256 sidecar from https://www.gyan.dev/ffmpeg/builds/; verified 2026-11-15"
+        },
+        "linux-x64": {
+          "version": "7.0.2",
+          "url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz",
+          "sha256": "abda8d77ce8309141f83ab8edf0596834087c52467f6badf376a6a2a4c87cf67",
+          "archiveFormat": "tar.xz",
+          "binaryPath": "ffmpeg-7.0.2-amd64-static/ffmpeg",
+          "sizeBytes": 42084600,
+          "hashSource": "Official MD5 sidecar https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz.md5; MD5 and local SHA-256 checked 2026-11-15",
+          "versionReason": "Retain 7.0.2: the examined FFmpeg 9.0.2 Linux x64 build reports --enable-nonfree; selected John Van Sickle 7.0.2 build was executed and has no --enable-nonfree."
+        },
+        "linux-arm64": {
+          "version": "7.0.2",
+          "url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz",
+          "sha256": "f4149bb2b0784e30e99bdda85471c9b5930d3402014e934a5098b41d0f7201b1",
+          "archiveFormat": "tar.xz",
+          "binaryPath": "ffmpeg-7.0.2-arm64-static/ffmpeg",
+          "sizeBytes": 36625844,
+          "hashSource": "Official MD5 sidecar https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz.md5; MD5 and local SHA-256 checked 2026-11-15",
+          "versionReason": "Retain 7.0.2: downloaded Martin Riedl 9.0.2 arm64 configuration contains --enable-nonfree; selected John Van Sickle 7.0.2 static configuration has no --enable-nonfree."
+        },
+        "macos-arm64": {
+          "version": "9.0.2",
+          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
+          "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
+          "archiveFormat": "zip",
+          "binaryPath": "ffmpeg",
+          "sizeBytes": 66332880,
+          "hashSource": "Official SHA-256 sidecar at https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip.sha256; verified 2026-11-15"
+        },
+        "macos-x64": {
+          "version": "9.0.2",
+          "url": "https://evermeet.cx/ffmpeg/ffmpeg-9.0.2.zip",
+          "sha256": "4acc0be580f9b2788029eb7bd4d645ff87968911b0a62aeeb3940d42d54558d5",
+          "archiveFormat": "zip",
+          "binaryPath": "ffmpeg",
+          "sizeBytes": 80827688,
+          "hashSource": "SHA-256 calculated locally; no upstream digest found at checked .sha256, .sha256sum, .md5, .md5sum endpoints; verified 2026-11-15"
+        }
+      },
+      "manualInstructions": {
+        "linux": "sudo apt install ffmpeg || sudo pacman -S ffmpeg || sudo dnf install ffmpeg",
+        "macos": "brew install ffmpeg",
+        "windows": "winget install Gyan.FFmpeg"
+      }
+    },
+    "python3": {
+      "name": "Python 3",
+      "description": "Python runtime environment (required for SHA-256 checksum and ZIP archive starter actions).",
+      "license": {
+        "name": "PSF-2.0 (with bundled third-party licenses)",
+        "url": "https://docs.python.org/3/license.html",
+        "isCopyleft": false,
+        "sourceUrl": "https://github.com/python/cpython"
+      },
+      "verification": {
+        "command": [
+          "--version"
+        ],
+        "testScriptArgs": [
+          "-c",
+          "import hashlib, zipfile, pathlib; print('OK')"
+        ]
+      },
+      "platforms": {
+        "windows-x64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-x86_64-pc-windows-msvc-install_only.tar.gz",
+          "sha256": "e23fe5b16926de1d81661b1a97352e89fb167549c55a6825796ccd0f32ec7f1b",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/python.exe",
+          "sizeBytes": 40833701,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
+        },
+        "linux-x64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-x86_64-unknown-linux-gnu-install_only.tar.gz",
+          "sha256": "c2f87d4b4e8db3abddb0f116c6ccfc503d0cbdbb9ee8faacddad1b679ec12e99",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/bin/python3",
+          "sizeBytes": 39499100,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
+        },
+        "linux-arm64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-aarch64-unknown-linux-gnu-install_only.tar.gz",
+          "sha256": "4792f81750282597fb2a3389fe18b945ed2ba6aad5e45ad406d122c58cb33081",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/bin/python3",
+          "sizeBytes": 40320221,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
+        },
+        "macos-arm64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-aarch64-apple-darwin-install_only.tar.gz",
+          "sha256": "e956e60bc9465d577ef8062059aa05cd3a2665b4b8678a2ed24e432368330b8f",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/bin/python3",
+          "sizeBytes": 29529742,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
+        },
+        "macos-x64": {
+          "version": "3.12.16",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16+20261110-x86_64-apple-darwin-install_only.tar.gz",
+          "sha256": "83f2922437e6d546d0fcdb8c11f150a8e52787e8d9ea8651b1974e20908eb1bc",
+          "archiveFormat": "tar.gz",
+          "binaryPath": "python/bin/python3",
+          "sizeBytes": 28836080,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
+        }
+      },
+      "manualInstructions": {
+        "linux": "sudo apt install python3 || sudo pacman -S python || sudo dnf install python3",
+        "macos": "brew install python3",
+        "windows": "winget install Python.Python.3.12"
+      }
+    },
+    "magick": {
+      "name": "ImageMagick",
+      "description": "Image manipulation suite (required for WebP conversion starter action).",
+      "license": {
+        "name": "ImageMagick (Apache-2.0 compatible)",
+        "url": "https://imagemagick.org/script/license.php",
+        "isCopyleft": false,
+        "sourceUrl": "https://github.com/ImageMagick/ImageMagick"
+      },
+      "verification": {
+        "command": [
+          "-version"
+        ],
+        "formatsCommand": [
+          "-list",
+          "format"
+        ],
+        "requiredFormats": [
+          "WEBP"
+        ]
+      },
+      "platforms": {
+        "windows-x64": {
+          "version": "7.1.2-35",
+          "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-35/ImageMagick-7.1.2-35-portable-Q16-HDRI-x64.7z",
+          "sha256": "34db4364da26c88d6b8cc5bbc1fff22b85d00d3b399c82fe85ee4790efacbbf1",
+          "archiveFormat": "7z",
+          "binaryPath": "magick.exe",
+          "sizeBytes": 12117825,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
+        },
+        "linux-x64": {
+          "version": "7.1.2-35",
+          "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-35/ImageMagick-7.1.2-35-gcc-x86_64.AppImage",
+          "sha256": "f111044ed06b68cfb478df724c5a32d35145afa21073242f888d234a2f8cc002",
+          "archiveFormat": "appimage",
+          "binaryPath": "squashfs-root/AppRun",
+          "sizeBytes": 33352184,
+          "hashSource": "GitHub release API asset SHA-256 digest; compared with local SHA-256 2026-11-15"
+        }
+      },
+      "manualInstructions": {
+        "linux": "sudo apt install imagemagick || sudo pacman -S imagemagick || sudo dnf install ImageMagick",
+        "macos": "brew install imagemagick",
+        "windows": "winget install ImageMagick.ImageMagick"
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@
 pub mod descriptor;
 pub mod dispatcher;
 pub mod executors;
+pub mod managed_tools;
 pub mod matcher;
 pub mod registry;
 pub mod secrets;

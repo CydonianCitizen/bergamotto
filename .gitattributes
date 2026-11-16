@@ -1,0 +1,2 @@
+# Preserve exact source and provenance bytes for hash-verified license artifacts.
+third-party/license-texts/** -text
