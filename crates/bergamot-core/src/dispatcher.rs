@@ -6,7 +6,7 @@ use tokio_util::sync::CancellationToken;
 use crate::descriptor::{
     ActionInvocation, ActionProgress, ActionResult, Cardinality, ExecutorConfig, OutputMode,
 };
-use crate::executors::process;
+use crate::executors::process::{self, StdoutPolicy};
 use crate::executors::webhook::{
     KeyringSecretProvider, ResponseTarget, SecretProvider, WebhookExecutor,
 };
@@ -94,6 +94,10 @@ impl Dispatcher {
             } else {
                 None
             };
+            let retain_stdout = matches!(
+                action.output.mode,
+                OutputMode::Stdout | OutputMode::Clipboard
+            );
             let output = match &action.executor {
                 ExecutorConfig::Webhook { .. } => {
                     let target = match staged.as_ref() {
@@ -113,17 +117,24 @@ impl Dispatcher {
                 }
                 _ => {
                     let path = staged.as_ref().map(StagedFile::path);
-                    process::execute_with_settings(&action.executor, job, path, cancel, &settings)
-                        .await?
+                    process::execute_with_settings_and_policy(
+                        &action.executor,
+                        job,
+                        path,
+                        cancel,
+                        &settings,
+                        if retain_stdout {
+                            StdoutPolicy::Capture
+                        } else {
+                            StdoutPolicy::Discard
+                        },
+                    )
+                    .await?
                 }
             };
             if cancel.is_cancelled() {
                 return Err(ExecutionError::Cancelled);
             }
-            let retain_stdout = matches!(
-                action.output.mode,
-                OutputMode::Stdout | OutputMode::Clipboard
-            );
             let retained_output_bytes = result
                 .stderr
                 .len()

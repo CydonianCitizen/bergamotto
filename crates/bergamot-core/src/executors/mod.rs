@@ -3,8 +3,10 @@ pub mod webhook;
 
 use thiserror::Error;
 
-/// Maximum bytes captured per process output stream before the child is stopped.
+/// Maximum stdout bytes retained from one process before the process group is stopped.
 pub const MAX_CAPTURED_OUTPUT_BYTES: u64 = 8 * 1024 * 1024;
+/// Maximum stderr bytes retained per process for diagnostics. Further bytes are drained.
+pub const MAX_STDERR_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 /// Maximum webhook response bytes streamed to a staged file.
 pub const MAX_WEBHOOK_FILE_BYTES: u64 = 1024 * 1024 * 1024;
 /// Maximum stdout and stderr bytes retained for one dispatched action result.

@@ -396,7 +396,7 @@ async fn cancellation_kills_descendant_and_discards_staged_output() {
 }
 
 #[tokio::test]
-async fn process_stdout_overflow_kills_descendant_and_discards_staged_output() {
+async fn process_stdout_overflow_kills_descendant() {
     let temp = tempdir().unwrap();
     let input = temp.path().join("input.txt");
     fs::write(&input, b"original").unwrap();
@@ -406,14 +406,10 @@ async fn process_stdout_overflow_kills_descendant_and_discards_staged_output() {
     let mut action = ActionRegistry::parse_manifest(VALID).unwrap();
     action.executor = fixture_process(
         "flood-descendant",
-        &[
-            CHILD_MARKER,
-            &(8 * 1024 * 1024 + 1).to_string(),
-            "${output}",
-        ],
+        &[CHILD_MARKER, &(8 * 1024 * 1024 + 1).to_string()],
         5,
     );
-    action.output.mode = OutputMode::File;
+    action.output.mode = OutputMode::Clipboard;
     registry.save_action(&action).unwrap();
     let invocation = invocation(&action.id, vec![input]);
 
@@ -425,19 +421,162 @@ async fn process_stdout_overflow_kills_descendant_and_discards_staged_output() {
     assert_output_limit(result, "process stdout", 8 * 1024 * 1024);
     assert_heartbeat_stops(&heartbeat).await;
     assert_no_staging_files(temp.path());
-    assert!(!temp.path().join("input (1).txt").exists());
 }
 
 #[tokio::test]
-async fn process_stderr_overflow_is_rejected() {
+async fn dispatcher_drains_large_stderr_and_keeps_its_exact_tail() {
     let temp = tempdir().unwrap();
     let input = temp.path().join("input.txt");
     fs::write(&input, b"input").unwrap();
-    let executor = fixture_process("flood-stderr", &[&(8 * 1024 * 1024 + 1).to_string()], 5);
+    let registry = Arc::new(ActionRegistry::open(temp.path().join("actions")).unwrap());
+    let dispatcher = Dispatcher::new(Arc::clone(&registry)).unwrap();
+    let mut action = ActionRegistry::parse_manifest(VALID).unwrap();
+    action.output.mode = OutputMode::None;
+    action.executor = fixture_process(
+        "flood-stderr-tail",
+        &[&(8 * 1024 * 1024 + 1).to_string()],
+        5,
+    );
+    registry.save_action(&action).unwrap();
 
-    let result = process::execute(&executor, &[input], None, &CancellationToken::new()).await;
+    let (progress, _events) = mpsc::channel(4);
+    let result = dispatcher
+        .dispatch(
+            &invocation(&action.id, vec![input]),
+            progress,
+            &CancellationToken::new(),
+        )
+        .await
+        .unwrap();
 
-    assert_output_limit(result, "process stderr", 8 * 1024 * 1024);
+    assert_eq!(result.stderr, expected_stderr_tail());
+    assert!(result.stdout.is_empty());
+}
+
+#[tokio::test]
+async fn failed_process_diagnostic_contains_only_the_exact_stderr_tail() {
+    let temp = tempdir().unwrap();
+    let input = temp.path().join("input.txt");
+    fs::write(&input, b"input").unwrap();
+    let registry = Arc::new(ActionRegistry::open(temp.path().join("actions")).unwrap());
+    let dispatcher = Dispatcher::new(Arc::clone(&registry)).unwrap();
+    let mut action = ActionRegistry::parse_manifest(VALID).unwrap();
+    action.output.mode = OutputMode::None;
+    action.executor = fixture_process(
+        "flood-stderr-tail-fail",
+        &[&(8 * 1024 * 1024 + 1).to_string()],
+        5,
+    );
+    registry.save_action(&action).unwrap();
+
+    let (progress, _events) = mpsc::channel(4);
+    let error = dispatcher
+        .dispatch(
+            &invocation(&action.id, vec![input]),
+            progress,
+            &CancellationToken::new(),
+        )
+        .await
+        .unwrap_err();
+
+    match error {
+        ExecutionError::ProcessFailed {
+            code: Some(23),
+            stderr,
+        } => assert_eq!(stderr.into_bytes(), expected_stderr_tail()),
+        error => panic!("expected fixture failure with stderr tail, got {error}"),
+    }
+}
+
+#[tokio::test]
+async fn file_output_discards_stdout_above_capture_limit_and_commits_staged_file() {
+    let temp = tempdir().unwrap();
+    let input = temp.path().join("input.txt");
+    fs::write(&input, b"input").unwrap();
+    let registry = Arc::new(ActionRegistry::open(temp.path().join("actions")).unwrap());
+    let dispatcher = Dispatcher::new(Arc::clone(&registry)).unwrap();
+    let mut action = ActionRegistry::parse_manifest(VALID).unwrap();
+    action.output.mode = OutputMode::File;
+    action.output.extension = Some("out".to_owned());
+    action.executor = fixture_process(
+        "write-flood-stdout",
+        &["${output}", &(8 * 1024 * 1024 + 1).to_string()],
+        5,
+    );
+    registry.save_action(&action).unwrap();
+
+    let (progress, _events) = mpsc::channel(4);
+    let result = dispatcher
+        .dispatch(
+            &invocation(&action.id, vec![input]),
+            progress,
+            &CancellationToken::new(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result.output_files, [temp.path().join("input.out")]);
+    assert_eq!(fs::read(&result.output_files[0]).unwrap(), b"converted");
+    assert!(result.stdout.is_empty());
+    assert_no_staging_files(temp.path());
+}
+
+#[tokio::test]
+async fn none_output_discards_stdout_above_capture_limit() {
+    let temp = tempdir().unwrap();
+    let input = temp.path().join("input.txt");
+    fs::write(&input, b"input").unwrap();
+    let registry = Arc::new(ActionRegistry::open(temp.path().join("actions")).unwrap());
+    let dispatcher = Dispatcher::new(Arc::clone(&registry)).unwrap();
+    let mut action = ActionRegistry::parse_manifest(VALID).unwrap();
+    action.output.mode = OutputMode::None;
+    action.executor = fixture_process("flood-stdout", &[&(8 * 1024 * 1024 + 1).to_string()], 5);
+    registry.save_action(&action).unwrap();
+
+    let (progress, _events) = mpsc::channel(4);
+    let result = dispatcher
+        .dispatch(
+            &invocation(&action.id, vec![input]),
+            progress,
+            &CancellationToken::new(),
+        )
+        .await
+        .unwrap();
+
+    assert!(result.stdout.is_empty());
+    assert!(result.stderr.is_empty());
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn script_none_output_discards_stdout_above_capture_limit() {
+    let temp = tempdir().unwrap();
+    let input = temp.path().join("input.txt");
+    fs::write(&input, b"input").unwrap();
+    let registry = Arc::new(ActionRegistry::open(temp.path().join("actions")).unwrap());
+    let dispatcher = Dispatcher::new(Arc::clone(&registry)).unwrap();
+    let mut action = ActionRegistry::parse_manifest(VALID).unwrap();
+    action.output.mode = OutputMode::None;
+    action.executor = ExecutorConfig::Script {
+        interpreter: "/bin/sh".to_owned(),
+        script_body: Some(format!("head -c {} /dev/zero\n", 8 * 1024 * 1024 + 1)),
+        script_path: None,
+        timeout_seconds: 5,
+    };
+    registry.save_action(&action).unwrap();
+
+    let (progress, _events) = mpsc::channel(4);
+    let result = dispatcher
+        .dispatch(
+            &invocation(&action.id, vec![input]),
+            progress,
+            &CancellationToken::new(),
+        )
+        .await
+        .unwrap();
+
+    assert!(result.stdout.is_empty());
+    assert!(result.stderr.is_empty());
 }
 
 #[tokio::test]
@@ -644,6 +783,20 @@ fn process_fixture() {
             }
             write_repeated_byte(&mut std::io::stdout().lock(), count);
         }
+        "write-flood-stdout" => {
+            fs::write(args.next().unwrap(), b"converted").unwrap();
+            let count: usize = args.next().unwrap().to_string_lossy().parse().unwrap();
+            write_repeated_byte(&mut std::io::stdout().lock(), count);
+        }
+        "flood-stderr-tail" | "flood-stderr-tail-fail" => {
+            let count: usize = args.next().unwrap().to_string_lossy().parse().unwrap();
+            let mut stderr = std::io::stderr().lock();
+            write_repeated_byte(&mut stderr, count);
+            write_stderr_tail(&mut stderr);
+            if mode == "flood-stderr-tail-fail" {
+                std::process::exit(23);
+            }
+        }
         other => panic!("unknown fixture mode {other}"),
     }
 }
@@ -656,4 +809,20 @@ fn write_repeated_byte(writer: &mut impl std::io::Write, count: usize) {
         writer.write_all(&block[..length]).unwrap();
         remaining -= length;
     }
+}
+
+const STDERR_TAIL_BYTES: usize = 64 * 1024;
+
+fn stderr_tail_pattern() -> Vec<u8> {
+    (0..STDERR_TAIL_BYTES)
+        .map(|index| b'!' + (index % 90) as u8)
+        .collect()
+}
+
+fn expected_stderr_tail() -> Vec<u8> {
+    stderr_tail_pattern()
+}
+
+fn write_stderr_tail(writer: &mut impl std::io::Write) {
+    writer.write_all(&stderr_tail_pattern()).unwrap();
 }

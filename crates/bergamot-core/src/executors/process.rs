@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::{absolute, Path, PathBuf};
@@ -13,7 +14,15 @@ use tokio_util::sync::CancellationToken;
 use crate::descriptor::ExecutorConfig;
 use crate::AppSettings;
 
-use super::{ExecutionError, ExecutionOutput, MAX_CAPTURED_OUTPUT_BYTES};
+use super::{
+    ExecutionError, ExecutionOutput, MAX_CAPTURED_OUTPUT_BYTES, MAX_STDERR_DIAGNOSTIC_BYTES,
+};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum StdoutPolicy {
+    Capture,
+    Discard,
+}
 
 /// Runs a direct command or a script file with separate OS arguments.
 /// `${inputs}` expands only when it occupies an entire argument.
@@ -35,6 +44,25 @@ pub async fn execute_with_settings(
     cancel: &CancellationToken,
     settings: &AppSettings,
 ) -> Result<ExecutionOutput, ExecutionError> {
+    execute_with_settings_and_policy(
+        executor,
+        files,
+        output,
+        cancel,
+        settings,
+        StdoutPolicy::Capture,
+    )
+    .await
+}
+
+pub(crate) async fn execute_with_settings_and_policy(
+    executor: &ExecutorConfig,
+    files: &[PathBuf],
+    output: Option<&Path>,
+    cancel: &CancellationToken,
+    settings: &AppSettings,
+    stdout_policy: StdoutPolicy,
+) -> Result<ExecutionOutput, ExecutionError> {
     if files.is_empty() {
         return Err(ExecutionError::InvalidConfig(
             "an executor requires at least one input file".to_owned(),
@@ -46,6 +74,11 @@ pub async fn execute_with_settings(
 
     let inputs = files.iter().map(absolute).collect::<io::Result<Vec<_>>>()?;
     let output = output.map(absolute).transpose()?;
+    let stdout_policy = if output.is_some() {
+        StdoutPolicy::Discard
+    } else {
+        stdout_policy
+    };
     let default_work_dir = inputs[0].parent().ok_or_else(|| {
         ExecutionError::InvalidConfig("the first input has no parent directory".to_owned())
     })?;
@@ -129,7 +162,8 @@ pub async fn execute_with_settings(
     }
 
     command.env("PATH", search_path);
-    let output = run_command(&mut command, timeout_seconds, cancel).await?;
+    let output =
+        run_command_with_policy(&mut command, timeout_seconds, cancel, stdout_policy).await?;
     if !output.status.success() {
         return Err(ExecutionError::ProcessFailed {
             code: output.status.code(),
@@ -149,6 +183,15 @@ pub(crate) async fn run_command(
     command: &mut Command,
     timeout_seconds: u32,
     cancel: &CancellationToken,
+) -> Result<Output, ExecutionError> {
+    run_command_with_policy(command, timeout_seconds, cancel, StdoutPolicy::Capture).await
+}
+
+async fn run_command_with_policy(
+    command: &mut Command,
+    timeout_seconds: u32,
+    cancel: &CancellationToken,
+    stdout_policy: StdoutPolicy,
 ) -> Result<Output, ExecutionError> {
     if cancel.is_cancelled() {
         return Err(ExecutionError::Cancelled);
@@ -178,8 +221,8 @@ pub(crate) async fn run_command(
             let wait = async move { leader.wait().await.map_err(ExecutionError::Io) };
             tokio::try_join!(
                 wait,
-                read_pipe(stdout, "process stdout"),
-                read_pipe(stderr, "process stderr"),
+                read_stdout(stdout, stdout_policy),
+                read_stderr(stderr),
             )
         };
         let timeout = Duration::from_secs(u64::from(timeout_seconds));
@@ -614,9 +657,9 @@ impl Drop for ActiveGroup {
     }
 }
 
-async fn read_pipe(
+async fn read_stdout(
     pipe: Option<impl AsyncRead + Unpin>,
-    stream: &'static str,
+    policy: StdoutPolicy,
 ) -> Result<Vec<u8>, ExecutionError> {
     let mut output = Vec::new();
     if let Some(mut pipe) = pipe {
@@ -626,17 +669,39 @@ async fn read_pipe(
             if count == 0 {
                 break;
             }
-            let remaining = MAX_CAPTURED_OUTPUT_BYTES as usize - output.len();
-            if count > remaining {
-                return Err(ExecutionError::OutputLimit {
-                    stream,
-                    limit: MAX_CAPTURED_OUTPUT_BYTES,
-                });
+            if policy == StdoutPolicy::Capture {
+                let remaining = MAX_CAPTURED_OUTPUT_BYTES as usize - output.len();
+                if count > remaining {
+                    return Err(ExecutionError::OutputLimit {
+                        stream: "process stdout",
+                        limit: MAX_CAPTURED_OUTPUT_BYTES,
+                    });
+                }
+                output.extend_from_slice(&buffer[..count]);
             }
-            output.extend_from_slice(&buffer[..count]);
         }
     }
     Ok(output)
+}
+
+async fn read_stderr(pipe: Option<impl AsyncRead + Unpin>) -> Result<Vec<u8>, ExecutionError> {
+    let mut tail = VecDeque::with_capacity(MAX_STDERR_DIAGNOSTIC_BYTES);
+    if let Some(mut pipe) = pipe {
+        let mut buffer = [0_u8; 8192];
+        loop {
+            let count = pipe.read(&mut buffer).await?;
+            if count == 0 {
+                break;
+            }
+            let overflow = tail
+                .len()
+                .saturating_add(count)
+                .saturating_sub(MAX_STDERR_DIAGNOSTIC_BYTES);
+            tail.drain(..overflow);
+            tail.extend(&buffer[..count]);
+        }
+    }
+    Ok(tail.into_iter().collect())
 }
 
 #[cfg(test)]
