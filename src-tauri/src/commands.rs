@@ -525,6 +525,23 @@ pub fn open_actions_folder(app: AppHandle, state: State<'_, Actions>) -> Result<
 }
 
 #[tauri::command]
+pub fn open_third_party_licenses(app: AppHandle) -> Result<(), String> {
+    let path = app
+        .path()
+        .resolve(
+            "THIRD_PARTY_LICENSES.txt",
+            tauri::path::BaseDirectory::Resource,
+        )
+        .map_err(|error| format!("Could not resolve third-party license notices: {error}"))?;
+    if !path.is_file() {
+        return Err("The third-party license notice file is missing from this installation".into());
+    }
+    app.opener()
+        .open_path(path.to_string_lossy().into_owned(), None::<&str>)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub fn present_wheel(
     app: AppHandle,
     state: State<'_, Actions>,

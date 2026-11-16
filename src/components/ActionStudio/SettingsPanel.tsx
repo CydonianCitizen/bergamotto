@@ -1,4 +1,4 @@
-import { Check, Copy, Download, Keyboard, RefreshCw, Trash2, Wrench } from 'lucide-react';
+import { Check, Copy, Download, FileText, Keyboard, RefreshCw, Trash2, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { errorText, ipc } from '../../ipc';
 import type { AppSettings, ManagedToolInfo, ModifierKey } from '../../types/actions';
@@ -124,6 +124,15 @@ export default function SettingsPanel({ settings, close }: { settings: AppSettin
       setTimeout(() => setCopiedHint(false), 2000);
     } catch {
       // ignore
+    }
+  }
+
+  async function openThirdPartyLicenses() {
+    setError('');
+    try {
+      await ipc.openThirdPartyLicenses();
+    } catch (reason) {
+      setError(errorText(reason));
     }
   }
 
@@ -405,6 +414,11 @@ export default function SettingsPanel({ settings, close }: { settings: AppSettin
                 </div>
               ))}
             </div>
+          </div>
+          <div className="settings-section">
+            <button className="button secondary sm icon-text" type="button" onClick={() => void openThirdPartyLicenses()}>
+              <FileText size={15} /> Open source licenses
+            </button>
           </div>
         </fieldset>
 

@@ -252,6 +252,7 @@ pub fn run() {
             commands::match_actions,
             commands::invoke_action,
             commands::open_actions_folder,
+            commands::open_third_party_licenses,
             commands::present_wheel,
             commands::wheel_state,
             global_drag::global_drag_enabled,

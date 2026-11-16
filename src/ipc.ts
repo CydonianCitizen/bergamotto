@@ -18,6 +18,7 @@ export const ipc = {
   dismissJob: (jobId: string) => invoke<void>('dismiss_job', { jobId }),
   jobSnapshot: () => invoke<JobSnapshot>('job_snapshot'),
   openActionsFolder: () => invoke<void>('open_actions_folder'),
+  openThirdPartyLicenses: () => invoke<void>('open_third_party_licenses'),
   presentWheel: (files: string[]) => invoke<void>('present_wheel', { files }),
   wheelState: () => invoke<WheelPresentation>('wheel_state'),
   getSettings: () => invoke<AppSettings>('get_settings'),

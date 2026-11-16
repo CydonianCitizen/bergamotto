@@ -10,6 +10,8 @@
 
 **Bergamotto** (`v0.0.1-alpha`) opens a radial wheel of customizable actions for your selected files.
 
+Third-party license notices: [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES).
+
 Unlike traditional radial converters that lock you into a hardcoded list of file format conversions, **Bergamotto has zero hardcoded actions**. Every wedge on the wheel is powered by a user-editable JSON manifest: run CLI tools (`ffmpeg`, `imagemagick`, `pandoc`), trigger custom Python/Bash/PowerShell scripts, upload files to HTTP webhooks, or launch custom workflows.
 
 ---
